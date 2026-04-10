@@ -1,0 +1,26 @@
+   Compiling myproject v0.1.0
+    Finished test target(s) in 2.5s
+     Running unittests src/lib.rs
+
+running 50 tests
+..................................................
+test result: ok. 50 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.05s
+
+     Running unittests src/main.rs
+
+running 3 tests
+.F.
+failures:
+
+---- test_authentication stdout ----
+thread 'test_authentication' panicked at 'assertion failed: user.is_authenticated()'
+note: run with `RUST_BACKTRACE=1` for a backtrace
+
+---- test_database_connection stdout ----
+thread 'test_database_connection' panicked at 'connection refused'
+
+failures:
+    test_authentication
+    test_database_connection
+
+test result: FAILED. 1 passed; 2 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.10s
