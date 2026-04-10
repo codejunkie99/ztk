@@ -98,10 +98,8 @@ pub fn hasFilterFor(command: []const u8) bool {
 }
 
 fn emitRewrite(allocator: std.mem.Allocator, command: []const u8) !void {
-    // Claude Code PreToolUse hook JSON format. Matches RTK's working
-    // implementation: permissionDecision="ask" + updatedInput. The "ask"
-    // mode is important — "allow" is silently ignored by Claude Code
-    // when paired with updatedInput, but "ask" triggers the rewrite flow.
+    // Claude Code PreToolUse hook JSON format.
+    // permissionDecision="ask" + updatedInput triggers the rewrite flow.
     const rewritten = try std.fmt.allocPrint(allocator, "ztk run {s}", .{command});
     defer allocator.free(rewritten);
     const escaped = try jsonEscape(allocator, rewritten);

@@ -73,14 +73,14 @@ const specs = [_]Spec{
     .{ .command = "ruff", .filter = &lint.filterLint, .stateful = true, .category = .medium },
     .{ .command = "clippy", .filter = &lint.filterLint, .stateful = true, .category = .medium },
     .{ .command = "cargo clippy", .filter = &lint.filterLint, .stateful = true, .category = .medium },
-    // Top 5 missing filters (matching RTK's breadth)
+    // Additional filters
     .{ .command = "wc", .filter = &files_wc.filterWc, .stateful = false, .category = .fast_changing },
     .{ .command = "tail", .filter = &files_headtail.filterHeadTail, .stateful = false, .category = .fast_changing },
     .{ .command = "head", .filter = &files_headtail.filterHeadTail, .stateful = false, .category = .fast_changing },
     .{ .command = "python3", .filter = &files_python.filterPython, .stateful = false, .category = .medium },
     .{ .command = "python", .filter = &files_python.filterPython, .stateful = false, .category = .medium },
     .{ .command = "zig", .filter = &filter_zig.filterZig, .stateful = false, .category = .medium },
-    // RTK-parity filters
+    // Infrastructure filters
     .{ .command = "docker", .filter = &docker.filterDocker, .stateful = false, .category = .fast_changing },
     .{ .command = "kubectl", .filter = &kubectl.filterKubectl, .stateful = false, .category = .fast_changing },
     .{ .command = "curl", .filter = &filter_curl.filterCurl, .stateful = false, .category = .fast_changing },

@@ -1,6 +1,5 @@
 //! `ztk stats` — rich TUI dashboard showing token savings.
-//! Modeled after RTK's `rtk gain` with colored output, efficiency meter,
-//! and per-command breakdown table with impact bars.
+//! Colored output, efficiency meter, and per-command breakdown with impact bars.
 
 const std = @import("std");
 const render = @import("stats_render.zig");
