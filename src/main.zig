@@ -19,6 +19,8 @@ pub fn main() !void {
 test {
     _ = @import("cli.zig");
     _ = @import("stats.zig");
+    _ = @import("stats_parse.zig");
+    _ = @import("stats_render.zig");
     _ = @import("proxy.zig");
     _ = @import("proxy_session.zig");
     _ = @import("proxy_test.zig");
