@@ -92,7 +92,7 @@ pub const filters = [_]RuntimeFilterDef{
     },
     .{
         .command_pattern = "^composer\\s+install",
-        .strip_lines = &.{ "^\\s*-\\s*Installing" },
+        .strip_lines = &.{"^\\s*-\\s*Installing"},
         .max_lines = 20,
         .on_empty = "composer install: ok",
     },
@@ -108,7 +108,7 @@ pub const filters = [_]RuntimeFilterDef{
     },
     .{
         .command_pattern = "^dotnet\\s+build",
-        .strip_lines = &.{ "^\\s*$" },
+        .strip_lines = &.{"^\\s*$"},
         .max_lines = 30,
         .on_empty = "dotnet build: ok",
     },
@@ -120,7 +120,7 @@ pub const filters = [_]RuntimeFilterDef{
     },
     .{
         .command_pattern = "^prettier\\s+--check",
-        .strip_lines = &.{ "^Checking formatting" },
+        .strip_lines = &.{"^Checking formatting"},
         .max_lines = 30,
         .on_empty = "prettier: ok",
     },
@@ -135,12 +135,12 @@ pub const filters = [_]RuntimeFilterDef{
     },
     .{
         .command_pattern = "^rake\\s+test",
-        .strip_lines = &.{ "^\\s*$" },
+        .strip_lines = &.{"^\\s*$"},
         .max_lines = 40,
     },
     .{
         .command_pattern = "^psql\\b",
-        .strip_lines = &.{ "^-+$" },
+        .strip_lines = &.{"^-+$"},
         .max_lines = 30,
     },
     .{

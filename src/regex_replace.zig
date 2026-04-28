@@ -11,7 +11,7 @@ pub fn replaceAll(
     replacement: []const u8,
     allocator: std.mem.Allocator,
 ) ![]u8 {
-    var out: std.ArrayList(u8) = .{};
+    var out: std.ArrayList(u8) = .empty;
     errdefer out.deinit(allocator);
 
     var i: usize = 0;

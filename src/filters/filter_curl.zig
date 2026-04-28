@@ -1,4 +1,5 @@
 const std = @import("std");
+const compat = @import("../compat.zig");
 
 /// curl output filter. Auto-detects JSON and emits a schema for large
 /// responses. HTML gets tag-stripped. Everything else passes through
@@ -24,8 +25,8 @@ fn filterJsonResponse(input: []const u8, allocator: std.mem.Allocator) error{Out
 }
 
 fn emitSchema(input: []const u8, allocator: std.mem.Allocator) error{OutOfMemory}![]const u8 {
-    var out: std.ArrayList(u8) = .{};
-    const w = out.writer(allocator);
+    var out: std.ArrayList(u8) = .empty;
+    const w = compat.listWriter(&out, allocator);
     try w.writeAll("json schema:\n");
     // Walk top-level keys via bracket depth tracking
     var depth: i32 = 0;
@@ -72,8 +73,8 @@ fn emitSchema(input: []const u8, allocator: std.mem.Allocator) error{OutOfMemory
 
 fn filterHtml(input: []const u8, allocator: std.mem.Allocator) error{OutOfMemory}![]const u8 {
     // Keep <title> and strip tags
-    var out: std.ArrayList(u8) = .{};
-    const w = out.writer(allocator);
+    var out: std.ArrayList(u8) = .empty;
+    const w = compat.listWriter(&out, allocator);
     if (std.mem.indexOf(u8, input, "<title>")) |s| {
         if (std.mem.indexOf(u8, input[s..], "</title>")) |e| {
             try w.writeAll("title: ");
@@ -86,8 +87,8 @@ fn filterHtml(input: []const u8, allocator: std.mem.Allocator) error{OutOfMemory
 }
 
 fn capLines(input: []const u8, max: usize, allocator: std.mem.Allocator) error{OutOfMemory}![]const u8 {
-    var out: std.ArrayList(u8) = .{};
-    const w = out.writer(allocator);
+    var out: std.ArrayList(u8) = .empty;
+    const w = compat.listWriter(&out, allocator);
     var it = std.mem.splitScalar(u8, input, '\n');
     var n: usize = 0;
     while (it.next()) |line| {

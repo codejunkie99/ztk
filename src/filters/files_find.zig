@@ -1,11 +1,12 @@
 const std = @import("std");
+const compat = @import("../compat.zig");
 
 const Entry = struct { dir: []const u8, count: usize };
 
 pub fn filterFind(input: []const u8, allocator: std.mem.Allocator) error{OutOfMemory}![]const u8 {
     if (input.len == 0) return allocator.dupe(u8, "find: no results");
 
-    var entries: std.ArrayList(Entry) = .{};
+    var entries: std.ArrayList(Entry) = .empty;
     defer entries.deinit(allocator);
 
     var total: usize = 0;
@@ -17,8 +18,8 @@ pub fn filterFind(input: []const u8, allocator: std.mem.Allocator) error{OutOfMe
         try bump(&entries, allocator, dirname(trimmed));
     }
 
-    var out: std.ArrayList(u8) = .{};
-    const w = out.writer(allocator);
+    var out: std.ArrayList(u8) = .empty;
+    const w = compat.listWriter(&out, allocator);
     try w.print("{d} files in {d} dirs: ", .{ total, entries.items.len });
     for (entries.items, 0..) |e, i| {
         if (i >= 30) {

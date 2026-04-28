@@ -1,4 +1,5 @@
 const std = @import("std");
+const compat = @import("../compat.zig");
 
 const State = enum { header, progress, failures, summary };
 
@@ -12,8 +13,8 @@ pub fn filterPytest(input: []const u8, allocator: std.mem.Allocator) error{OutOf
         return extractPassSummary(input, allocator);
     }
 
-    var out: std.ArrayList(u8) = .{};
-    const w = out.writer(allocator);
+    var out: std.ArrayList(u8) = .empty;
+    const w = compat.listWriter(&out, allocator);
     var state: State = .header;
     var failure_blocks: usize = 0;
     var it = std.mem.splitScalar(u8, input, '\n');

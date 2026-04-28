@@ -10,7 +10,7 @@ pub const Parser = struct {
     pattern: []const u8,
     pos: usize = 0,
     allocator: std.mem.Allocator,
-    states: std.ArrayList(State) = .{},
+    states: std.ArrayList(State) = .empty,
     num_groups: u8 = 0,
 
     pub fn init(allocator: std.mem.Allocator, pattern: []const u8) Parser {

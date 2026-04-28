@@ -1,4 +1,5 @@
 const std = @import("std");
+const compat = @import("compat.zig");
 
 pub const StderrPolicy = enum {
     filter_stdout_only,
@@ -28,20 +29,23 @@ pub fn exec(
     allocator: std.mem.Allocator,
     policy: StderrPolicy,
 ) !ExecResult {
-    const result = std.process.Child.run(.{
-        .allocator = allocator,
+    var threaded: std.Io.Threaded = .init(allocator, .{ .environ = compat.processEnviron() });
+    defer threaded.deinit();
+
+    const result = std.process.run(allocator, threaded.io(), .{
         .argv = argv,
-        .max_output_bytes = max_output,
+        .stdout_limit = .limited(max_output),
+        .stderr_limit = .limited(max_output),
     }) catch |err| switch (err) {
-        error.StdoutStreamTooLong, error.StderrStreamTooLong => return oversized(allocator),
+        error.StreamTooLong => return oversized(allocator),
         else => return err,
     };
 
     const exit_code: u8 = switch (result.term) {
-        .Exited => |code| code,
-        .Signal => |sig| @truncate(128 +% sig),
-        .Stopped => |sig| @truncate(128 +% sig),
-        .Unknown => 1,
+        .exited => |code| code,
+        .signal => |sig| @truncate(128 +% @intFromEnum(sig)),
+        .stopped => |sig| @truncate(128 +% @intFromEnum(sig)),
+        .unknown => 1,
     };
 
     // Apply stderr policy to decide what the caller filters as "stdout".

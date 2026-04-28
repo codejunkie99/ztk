@@ -7,6 +7,7 @@ const proxy = @import("proxy.zig");
 const claude = @import("hooks/claude.zig");
 const filter_cmd = @import("filter_cmd.zig");
 const stats = @import("stats.zig");
+const compat = @import("compat.zig");
 
 const version_str = "ztk 0.2.0";
 
@@ -18,14 +19,14 @@ pub fn run(args: []const []const u8, allocator: std.mem.Allocator) !u8 {
     const sub = args[1];
 
     if (eq(sub, "--version") or eq(sub, "version")) {
-        try std.fs.File.stdout().writeAll(version_str ++ "\n");
+        try compat.writeStdout(version_str ++ "\n");
         return 0;
     }
     if (eq(sub, "init")) return runInitCmd(args, allocator);
     if (eq(sub, "rewrite")) return claude.runRewrite(allocator);
     if (eq(sub, "run")) {
         if (args.len < 3) {
-            try std.fs.File.stderr().writeAll("usage: ztk run <cmd> [args...]\n");
+            try compat.writeStderr("usage: ztk run <cmd> [args...]\n");
             return 1;
         }
         return proxy.runProxy(args[2..], allocator);
@@ -35,7 +36,7 @@ pub fn run(args: []const []const u8, allocator: std.mem.Allocator) !u8 {
 
     var buf: [256]u8 = undefined;
     const msg = std.fmt.bufPrint(&buf, "ztk: unknown command: {s}\n", .{sub}) catch "ztk: unknown command\n";
-    std.fs.File.stderr().writeAll(msg) catch {};
+    compat.writeStderr(msg) catch {};
     try usage();
     return 1;
 }
@@ -50,7 +51,7 @@ fn runInitCmd(args: []const []const u8, allocator: std.mem.Allocator) !u8 {
 }
 
 fn usage() !void {
-    try std.fs.File.stderr().writeAll(
+    try compat.writeStderr(
         \\usage: ztk <command> [args...]
         \\
         \\commands:

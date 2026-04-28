@@ -1,4 +1,5 @@
 const std = @import("std");
+const compat = @import("../compat.zig");
 
 /// env command filter. Masks sensitive values and truncates long ones.
 /// Sensitive keys (KEY, SECRET, TOKEN, PASSWORD, PASS, API) have their
@@ -6,8 +7,8 @@ const std = @import("std");
 pub fn filterEnv(input: []const u8, allocator: std.mem.Allocator) error{OutOfMemory}![]const u8 {
     if (input.len == 0) return allocator.dupe(u8, "");
 
-    var out: std.ArrayList(u8) = .{};
-    const w = out.writer(allocator);
+    var out: std.ArrayList(u8) = .empty;
+    const w = compat.listWriter(&out, allocator);
     var it = std.mem.splitScalar(u8, input, '\n');
     var count: usize = 0;
     while (it.next()) |line| {

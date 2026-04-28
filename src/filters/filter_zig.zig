@@ -1,4 +1,5 @@
 const std = @import("std");
+const compat = @import("../compat.zig");
 
 /// Filter `zig build` / `zig test` output. Keeps:
 ///  - error: ... lines
@@ -37,8 +38,8 @@ pub fn filterZig(input: []const u8, allocator: std.mem.Allocator) error{OutOfMem
     }
 
     // Keep error/warning blocks and summaries
-    var out: std.ArrayList(u8) = .{};
-    const w = out.writer(allocator);
+    var out: std.ArrayList(u8) = .empty;
+    const w = compat.listWriter(&out, allocator);
     var in_diag = false;
     var it = std.mem.splitScalar(u8, input, '\n');
     while (it.next()) |line| {

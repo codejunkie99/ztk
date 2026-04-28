@@ -1,4 +1,5 @@
 const std = @import("std");
+const compat = @import("../compat.zig");
 
 const Entry = struct { file: []const u8, count: usize };
 
@@ -6,7 +7,7 @@ pub fn filterGrep(input: []const u8, allocator: std.mem.Allocator) error{OutOfMe
     if (input.len == 0) return allocator.dupe(u8, "grep: no matches");
     if (countLines(input) < 10) return allocator.dupe(u8, input);
 
-    var entries: std.ArrayList(Entry) = .{};
+    var entries: std.ArrayList(Entry) = .empty;
     defer entries.deinit(allocator);
 
     var total: usize = 0;
@@ -18,8 +19,8 @@ pub fn filterGrep(input: []const u8, allocator: std.mem.Allocator) error{OutOfMe
         try bump(&entries, allocator, file);
     }
 
-    var out: std.ArrayList(u8) = .{};
-    const w = out.writer(allocator);
+    var out: std.ArrayList(u8) = .empty;
+    const w = compat.listWriter(&out, allocator);
     try w.print("{d} matches in {d} files: ", .{ total, entries.items.len });
     for (entries.items, 0..) |e, i| {
         if (i >= 30) {

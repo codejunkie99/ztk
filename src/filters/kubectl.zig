@@ -1,4 +1,5 @@
 const std = @import("std");
+const compat = @import("../compat.zig");
 
 /// kubectl output filter. Auto-detects subcommand shape from the output:
 ///  - `kubectl get <resource>` produces a NAME/READY/STATUS table
@@ -15,8 +16,8 @@ pub fn filterKubectl(input: []const u8, allocator: std.mem.Allocator) error{OutO
 }
 
 fn compressTable(input: []const u8, allocator: std.mem.Allocator) error{OutOfMemory}![]const u8 {
-    var out: std.ArrayList(u8) = .{};
-    const w = out.writer(allocator);
+    var out: std.ArrayList(u8) = .empty;
+    const w = compat.listWriter(&out, allocator);
     var it = std.mem.splitScalar(u8, input, '\n');
     var count: usize = 0;
     while (it.next()) |line| {
@@ -35,8 +36,8 @@ fn compressTable(input: []const u8, allocator: std.mem.Allocator) error{OutOfMem
 }
 
 fn dedupLogs(input: []const u8, allocator: std.mem.Allocator) error{OutOfMemory}![]const u8 {
-    var out: std.ArrayList(u8) = .{};
-    const w = out.writer(allocator);
+    var out: std.ArrayList(u8) = .empty;
+    const w = compat.listWriter(&out, allocator);
     var it = std.mem.splitScalar(u8, input, '\n');
     var prev: []const u8 = "";
     var dup: usize = 0;
@@ -57,8 +58,8 @@ fn dedupLogs(input: []const u8, allocator: std.mem.Allocator) error{OutOfMemory}
 }
 
 fn compressDescribe(input: []const u8, allocator: std.mem.Allocator) error{OutOfMemory}![]const u8 {
-    var out: std.ArrayList(u8) = .{};
-    const w = out.writer(allocator);
+    var out: std.ArrayList(u8) = .empty;
+    const w = compat.listWriter(&out, allocator);
     var it = std.mem.splitScalar(u8, input, '\n');
     var in_events = false;
     while (it.next()) |line| {

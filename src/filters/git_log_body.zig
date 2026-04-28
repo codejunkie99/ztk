@@ -41,7 +41,7 @@ pub fn isCommitHeader(line: []const u8) bool {
 }
 
 pub fn isHeader(line: []const u8) bool {
-    const t = std.mem.trimLeft(u8, line, " \t");
+    const t = std.mem.trimStart(u8, line, " \t");
     return std.mem.startsWith(u8, t, "Author:") or
         std.mem.startsWith(u8, t, "Date:") or
         std.mem.startsWith(u8, t, "Merge:") or
@@ -49,7 +49,7 @@ pub fn isHeader(line: []const u8) bool {
 }
 
 pub fn isTrailer(line: []const u8) bool {
-    const t = std.mem.trimLeft(u8, line, " \t");
+    const t = std.mem.trimStart(u8, line, " \t");
     return std.mem.startsWith(u8, t, "Signed-off-by:") or
         std.mem.startsWith(u8, t, "Co-authored-by:") or
         std.mem.startsWith(u8, t, "Reviewed-by:");

@@ -1,8 +1,9 @@
 const std = @import("std");
+const compat = @import("../compat.zig");
 
 pub fn condenseLargeDiff(input: []const u8, allocator: std.mem.Allocator) error{OutOfMemory}![]const u8 {
-    var out: std.ArrayList(u8) = .{};
-    const w = out.writer(allocator);
+    var out: std.ArrayList(u8) = .empty;
+    const w = compat.listWriter(&out, allocator);
     var total_lines: usize = 0;
     var hunk_lines: usize = 0;
     var truncated_lines: usize = 0;

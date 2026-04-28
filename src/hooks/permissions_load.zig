@@ -1,4 +1,5 @@
 const std = @import("std");
+const compat = @import("../compat.zig");
 
 pub const Rules = struct {
     deny: []const []const u8,
@@ -15,8 +16,8 @@ pub fn loadRules(
     settings_paths: []const []const u8,
     allocator: std.mem.Allocator,
 ) LoadError!Rules {
-    var deny: std.ArrayList([]const u8) = .{};
-    var ask: std.ArrayList([]const u8) = .{};
+    var deny: std.ArrayList([]const u8) = .empty;
+    var ask: std.ArrayList([]const u8) = .empty;
 
     for (settings_paths) |path| {
         const bytes = readFileBytes(path, allocator) catch |err| switch (err) {
@@ -43,13 +44,13 @@ pub fn loadRules(
 fn warn(comptime fmt: []const u8, args: anytype) void {
     var buf: [512]u8 = undefined;
     const msg = std.fmt.bufPrint(&buf, fmt, args) catch return;
-    std.fs.File.stderr().writeAll(msg) catch {};
+    compat.writeStderr(msg) catch {};
 }
 
 fn readFileBytes(path: []const u8, allocator: std.mem.Allocator) ![]u8 {
-    var file = try std.fs.cwd().openFile(path, .{});
-    defer file.close();
-    return file.readToEndAlloc(allocator, 1 << 20);
+    const file = try compat.openFile(path, .{});
+    defer compat.closeFile(file);
+    return compat.readFileToEndAlloc(file, allocator, 1 << 20);
 }
 
 fn appendFromJson(

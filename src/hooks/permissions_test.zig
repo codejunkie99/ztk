@@ -1,12 +1,15 @@
 const std = @import("std");
 const perms = @import("permissions.zig");
 const matchPattern = @import("permissions_match.zig").matchPattern;
+const compat = @import("../compat.zig");
 
 fn writeSettings(dir: *std.testing.TmpDir, name: []const u8, body: []const u8) ![]const u8 {
-    var f = try dir.dir.createFile(name, .{});
-    defer f.close();
-    try f.writeAll(body);
-    return dir.dir.realpathAlloc(std.testing.allocator, name);
+    const f = try dir.dir.createFile(std.testing.io, name, .{});
+    defer compat.closeFile(f);
+    try compat.writeFileAll(f, body);
+    var buf: [std.Io.Dir.max_path_bytes]u8 = undefined;
+    const len = try dir.dir.realPathFile(std.testing.io, name, &buf);
+    return std.testing.allocator.dupe(u8, buf[0..len]);
 }
 
 test "allow when no rules match" {

@@ -1,12 +1,13 @@
 const std = @import("std");
+const compat = @import("../compat.zig");
 
 /// Generic log dedup filter. Collapses consecutive identical (or
 /// near-identical modulo timestamps) lines to `line [xN]`.
 pub fn filterLog(input: []const u8, allocator: std.mem.Allocator) error{OutOfMemory}![]const u8 {
     if (input.len == 0) return allocator.dupe(u8, "");
 
-    var out: std.ArrayList(u8) = .{};
-    const w = out.writer(allocator);
+    var out: std.ArrayList(u8) = .empty;
+    const w = compat.listWriter(&out, allocator);
     var it = std.mem.splitScalar(u8, input, '\n');
     var prev_canonical: []const u8 = "";
     var prev_line: []const u8 = "";
@@ -46,7 +47,7 @@ fn stripTimestamp(line: []const u8) []const u8 {
     // Skip leading bracket timestamps
     if (line[0] == '[') {
         if (std.mem.indexOfScalar(u8, line, ']')) |end| {
-            return std.mem.trimLeft(u8, line[end + 1 ..], " \t");
+            return std.mem.trimStart(u8, line[end + 1 ..], " \t");
         }
     }
     // Skip leading YYYY-MM-DD pattern
@@ -54,7 +55,7 @@ fn stripTimestamp(line: []const u8) []const u8 {
         // Walk past the date and time
         var i: usize = 10;
         while (i < line.len and (line[i] == 'T' or line[i] == ' ' or std.ascii.isDigit(line[i]) or line[i] == ':' or line[i] == '.' or line[i] == 'Z')) : (i += 1) {}
-        return std.mem.trimLeft(u8, line[i..], " \t");
+        return std.mem.trimStart(u8, line[i..], " \t");
     }
     return line;
 }

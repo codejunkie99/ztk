@@ -1,10 +1,11 @@
 const std = @import("std");
+const compat = @import("../compat.zig");
 
 pub const Entry = struct { file: []const u8, count: usize };
 
 pub fn filterLint(input: []const u8, allocator: std.mem.Allocator) error{OutOfMemory}![]const u8 {
     if (input.len == 0) return allocator.dupe(u8, "lint: ok");
-    var entries: std.ArrayList(Entry) = .{};
+    var entries: std.ArrayList(Entry) = .empty;
     defer entries.deinit(allocator);
     var total: usize = 0;
     var errors: usize = 0;
@@ -51,8 +52,8 @@ fn addEntry(list: *std.ArrayList(Entry), allocator: std.mem.Allocator, file: []c
 
 fn formatOutput(items: []Entry, total: usize, errs: usize, warns: usize, allocator: std.mem.Allocator) ![]const u8 {
     std.mem.sort(Entry, items, {}, cmpDesc);
-    var out: std.ArrayList(u8) = .{};
-    const w = out.writer(allocator);
+    var out: std.ArrayList(u8) = .empty;
+    const w = compat.listWriter(&out, allocator);
     try w.print("{d} issues in {d} files", .{ total, items.len });
     if (errs > 0 or warns > 0) try w.print(" ({d} errors, {d} warnings)", .{ errs, warns });
     try w.writeByte('\n');

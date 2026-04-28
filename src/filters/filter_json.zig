@@ -1,4 +1,5 @@
 const std = @import("std");
+const compat = @import("../compat.zig");
 
 /// json output filter. Emits a structural summary instead of values.
 /// Short inputs (<500 bytes) pass through unchanged. Long inputs get
@@ -14,8 +15,8 @@ pub fn filterJson(input: []const u8, allocator: std.mem.Allocator) error{OutOfMe
     };
     defer parsed.deinit();
 
-    var out: std.ArrayList(u8) = .{};
-    const w = out.writer(allocator);
+    var out: std.ArrayList(u8) = .empty;
+    const w = compat.listWriter(&out, allocator);
     try writeSchema(w, parsed.value, 0);
     return out.toOwnedSlice(allocator);
 }
@@ -68,8 +69,8 @@ fn typeName(v: std.json.Value) []const u8 {
 }
 
 fn emitKeys(input: []const u8, allocator: std.mem.Allocator) error{OutOfMemory}![]const u8 {
-    var out: std.ArrayList(u8) = .{};
-    const w = out.writer(allocator);
+    var out: std.ArrayList(u8) = .empty;
+    const w = compat.listWriter(&out, allocator);
     try w.writeAll("json (unparseable, raw preview):\n");
     const preview_len = @min(input.len, 300);
     try w.writeAll(input[0..preview_len]);
@@ -85,9 +86,9 @@ test "json short passes through" {
 }
 
 test "json long emits schema" {
-    var buf: std.ArrayList(u8) = .{};
+    var buf: std.ArrayList(u8) = .empty;
     defer buf.deinit(std.testing.allocator);
-    const w = buf.writer(std.testing.allocator);
+    const w = compat.listWriter(&buf, std.testing.allocator);
     try w.writeAll("{\"id\":42,\"name\":\"test\",\"nested\":{\"key\":\"value\"},\"items\":[1,2,3],\"extra\":\"");
     var i: usize = 0;
     while (i < 500) : (i += 1) try w.writeByte('x');

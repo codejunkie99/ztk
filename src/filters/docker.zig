@@ -1,4 +1,5 @@
 const std = @import("std");
+const compat = @import("../compat.zig");
 
 /// Docker output filter handling `docker ps`, `docker images`, and
 /// `docker logs`. Each subcommand has a different compression strategy:
@@ -13,8 +14,8 @@ pub fn filterDocker(input: []const u8, allocator: std.mem.Allocator) error{OutOf
 }
 
 fn compressPs(input: []const u8, allocator: std.mem.Allocator) error{OutOfMemory}![]const u8 {
-    var out: std.ArrayList(u8) = .{};
-    const w = out.writer(allocator);
+    var out: std.ArrayList(u8) = .empty;
+    const w = compat.listWriter(&out, allocator);
     var it = std.mem.splitScalar(u8, input, '\n');
     var count: usize = 0;
     while (it.next()) |line| {
@@ -42,8 +43,8 @@ fn compressPs(input: []const u8, allocator: std.mem.Allocator) error{OutOfMemory
 }
 
 fn compressImages(input: []const u8, allocator: std.mem.Allocator) error{OutOfMemory}![]const u8 {
-    var out: std.ArrayList(u8) = .{};
-    const w = out.writer(allocator);
+    var out: std.ArrayList(u8) = .empty;
+    const w = compat.listWriter(&out, allocator);
     var it = std.mem.splitScalar(u8, input, '\n');
     var count: usize = 0;
     while (it.next()) |line| {
@@ -61,8 +62,8 @@ fn compressImages(input: []const u8, allocator: std.mem.Allocator) error{OutOfMe
 }
 
 fn dedupLogs(input: []const u8, allocator: std.mem.Allocator) error{OutOfMemory}![]const u8 {
-    var out: std.ArrayList(u8) = .{};
-    const w = out.writer(allocator);
+    var out: std.ArrayList(u8) = .empty;
+    const w = compat.listWriter(&out, allocator);
     var it = std.mem.splitScalar(u8, input, '\n');
     var prev: []const u8 = "";
     var dup_count: usize = 0;

@@ -46,7 +46,7 @@ pub fn parsePlain(input: []const u8, st: *types.Counts, files: *std.ArrayList([]
             in_staged = false;
             continue;
         }
-        const t = std.mem.trimLeft(u8, line, " \t");
+        const t = std.mem.trimStart(u8, line, " \t");
         const path = extractPlainPath(t) orelse continue;
         if (std.mem.startsWith(u8, t, "modified:")) {
             if (in_staged) st.staged += 1 else st.modified += 1;

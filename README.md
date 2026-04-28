@@ -37,7 +37,7 @@ From a real 256-command development session:
 brew install codejunkie99/ztk/ztk
 ```
 
-Or build from source (requires Zig 0.15+):
+Or build from source (requires Zig 0.16+):
 
 ```bash
 git clone https://github.com/codejunkie99/ztk
@@ -121,7 +121,7 @@ Mutation commands like `git add` automatically invalidate related caches.
 
 **260KB binary.** Not 5MB, not 50MB. A quarter megabyte. Starts in under 1ms.
 
-**Zero dependencies.** No package manager, no runtime, no shared libraries. Built entirely on Zig's standard library. Cross-compiles to macOS and Linux (arm64 + x86_64) from any platform.
+**Zero dependencies.** No package manager, no runtime, no shared libraries. Built entirely on Zig's standard library. Cross-compiles to macOS, Linux, and Windows from any platform.
 
 **Thompson NFA regex engine.** The runtime filter system uses a custom regex engine built from scratch. Linear time guaranteed. No catastrophic backtracking, ever. ~400 lines of Zig.
 

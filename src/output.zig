@@ -1,5 +1,5 @@
 const std = @import("std");
-const stdout = std.fs.File.stdout;
+const compat = @import("compat.zig");
 
 pub const LogEntry = struct {
     command: []const u8,
@@ -9,9 +9,9 @@ pub const LogEntry = struct {
 };
 
 pub fn emit(filtered: []const u8, original_len: usize, exit_code: u8, savings_path: ?[]const u8) !void {
-    try stdout().writeAll(filtered);
+    try compat.writeStdout(filtered);
     if (filtered.len == 0 or filtered[filtered.len - 1] != '\n') {
-        try stdout().writeAll("\n");
+        try compat.writeStdout("\n");
     }
     if (savings_path) |path| {
         logSavings(path, .{
@@ -24,9 +24,9 @@ pub fn emit(filtered: []const u8, original_len: usize, exit_code: u8, savings_pa
 }
 
 pub fn emitWithCommand(filtered: []const u8, entry: LogEntry, savings_path: ?[]const u8) !void {
-    try stdout().writeAll(filtered);
+    try compat.writeStdout(filtered);
     if (filtered.len == 0 or filtered[filtered.len - 1] != '\n') {
-        try stdout().writeAll("\n");
+        try compat.writeStdout("\n");
     }
     if (savings_path) |path| {
         logSavings(path, entry) catch {};
@@ -36,12 +36,14 @@ pub fn emitWithCommand(filtered: []const u8, entry: LogEntry, savings_path: ?[]c
 fn logSavings(path: []const u8, entry: LogEntry) !void {
     // Ensure parent directory exists
     if (std.fs.path.dirname(path)) |dir| {
-        std.fs.cwd().makePath(dir) catch {};
+        compat.makePath(dir) catch {};
     }
-    const file = try std.fs.cwd().createFile(path, .{ .truncate = false, .mode = 0o644 });
-    defer file.close();
-    try file.seekFromEnd(0);
-    const ts = std.time.timestamp();
+    const file = try compat.createFile(path, .{
+        .truncate = false,
+        .permissions = compat.permissionsFromMode(0o644),
+    });
+    defer compat.closeFile(file);
+    const ts = compat.unixTimestamp();
     var buf: [512]u8 = undefined;
     const line = try std.fmt.bufPrint(&buf, "{d}\t{s}\t{d}\t{d}\t{d}%\texit={d}\n", .{
         ts,
@@ -51,7 +53,7 @@ fn logSavings(path: []const u8, entry: LogEntry) !void {
         savingsPercent(entry.original, entry.filtered),
         entry.exit_code,
     });
-    try file.writeAll(line);
+    try compat.appendFileAll(file, line);
 }
 
 pub fn savingsPercent(original: usize, filtered: usize) usize {

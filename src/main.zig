@@ -1,16 +1,15 @@
 const std = @import("std");
 const cli = @import("cli.zig");
+const compat = @import("compat.zig");
 
-pub fn main() !void {
-    var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
-    defer arena.deinit();
-    const allocator = arena.allocator();
-
-    const args = try std.process.argsAlloc(allocator);
+pub fn main(init: std.process.Init) !void {
+    compat.setEnviron(init.minimal.environ);
+    const allocator = init.arena.allocator();
+    const args = try init.minimal.args.toSlice(allocator);
     const exit_code = cli.run(args, allocator) catch |err| {
         var buf: [128]u8 = undefined;
         const msg = std.fmt.bufPrint(&buf, "ztk: error: {s}\n", .{@errorName(err)}) catch "ztk: error\n";
-        std.fs.File.stderr().writeAll(msg) catch {};
+        compat.writeStderr(msg) catch {};
         std.process.exit(1);
     };
     std.process.exit(exit_code);

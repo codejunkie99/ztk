@@ -6,6 +6,7 @@ const runtime_filters = @import("filters/runtime.zig");
 const output = @import("output.zig");
 const proxy_session = @import("proxy_session.zig");
 const permissions = @import("hooks/permissions.zig");
+const compat = @import("compat.zig");
 
 pub fn runProxy(cmd_args: []const []const u8, allocator: std.mem.Allocator) !u8 {
     const cmd_str = try std.mem.join(allocator, " ", cmd_args);
@@ -13,11 +14,11 @@ pub fn runProxy(cmd_args: []const []const u8, allocator: std.mem.Allocator) !u8 
         const verdict = permissions.checkCommand(cmd_str, &.{}, allocator) catch .allow;
         switch (verdict) {
             .deny => {
-                std.fs.File.stderr().writeAll("ztk: command denied by permission rules\n") catch {};
+                compat.writeStderr("ztk: command denied by permission rules\n") catch {};
                 return 2;
             },
             .ask => {
-                std.fs.File.stderr().writeAll("ztk: command requires user confirmation\n") catch {};
+                compat.writeStderr("ztk: command requires user confirmation\n") catch {};
                 return 3;
             },
             .allow, .passthrough => {},
@@ -44,15 +45,12 @@ pub fn runProxy(cmd_args: []const []const u8, allocator: std.mem.Allocator) !u8 
 }
 
 fn resolveLogPath(allocator: std.mem.Allocator) !?[]u8 {
-    var owned_home: ?[]u8 = null;
-    const home = if (builtin.os.tag == .windows) blk: {
-        owned_home = std.process.getEnvVarOwned(allocator, "USERPROFILE") catch |err| switch (err) {
-            error.EnvironmentVariableNotFound => return null,
-            else => return err,
-        };
-        break :blk owned_home.?;
-    } else std.posix.getenv("HOME") orelse return null;
-    defer if (owned_home) |buf| allocator.free(buf);
+    const env_key = if (builtin.os.tag == .windows) "USERPROFILE" else "HOME";
+    const home = compat.getEnvOwned(allocator, env_key) catch |err| switch (err) {
+        error.EnvironmentVariableMissing => return null,
+        else => return err,
+    };
+    defer allocator.free(home);
     return try std.fmt.allocPrint(allocator, "{s}/.local/share/ztk/savings.log", .{home});
 }
 

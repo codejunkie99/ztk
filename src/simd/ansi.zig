@@ -13,7 +13,7 @@ pub fn stripAnsi(input: []const u8, allocator: std.mem.Allocator) ![]const u8 {
     }
 
     // Slow path: walk and skip CSI sequences
-    var buf: std.ArrayList(u8) = .{};
+    var buf: std.ArrayList(u8) = .empty;
     var i: usize = 0;
     while (i < input.len) {
         if (input[i] == 0x1b and i + 1 < input.len and input[i + 1] == '[') {

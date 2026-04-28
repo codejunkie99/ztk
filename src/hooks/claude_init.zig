@@ -1,6 +1,7 @@
 const std = @import("std");
 const claude = @import("claude.zig");
 const buildSettings = @import("claude_init_build.zig").buildSettings;
+const compat = @import("../compat.zig");
 
 /// Install the ztk PreToolUse hook into Claude Code's settings.
 /// If `global` is true, target `$HOME/.claude/settings.json`;
@@ -9,13 +10,12 @@ pub fn runInit(allocator: std.mem.Allocator, global: bool) !void {
     const path = try resolveSettingsPath(allocator, global);
     defer allocator.free(path);
     const status = try writeInit(allocator, path);
-    const out = std.fs.File.stdout();
     switch (status) {
-        .already_installed => try out.writeAll("ztk PreToolUse hook already installed\n"),
+        .already_installed => try compat.writeStdout("ztk PreToolUse hook already installed\n"),
         .installed => {
             var buf: [512]u8 = undefined;
             const msg = try std.fmt.bufPrint(&buf, "Installed ztk PreToolUse hook in {s}\n", .{path});
-            try out.writeAll(msg);
+            try compat.writeStdout(msg);
         },
     }
 }
@@ -28,7 +28,7 @@ pub const InstallStatus = enum { installed, already_installed };
 /// `.already_installed` if a matching hook is already present.
 pub fn writeInit(allocator: std.mem.Allocator, settings_path: []const u8) !InstallStatus {
     if (std.fs.path.dirname(settings_path)) |dir| {
-        std.fs.cwd().makePath(dir) catch |e| switch (e) {
+        compat.makePath(dir) catch |e| switch (e) {
             error.PathAlreadyExists => {},
             else => return e,
         };
@@ -46,7 +46,7 @@ pub fn writeInit(allocator: std.mem.Allocator, settings_path: []const u8) !Insta
 
 fn resolveSettingsPath(allocator: std.mem.Allocator, global: bool) ![]u8 {
     if (global) {
-        const home = std.process.getEnvVarOwned(allocator, "HOME") catch return error.HomeNotSet;
+        const home = compat.getEnvOwned(allocator, "HOME") catch return error.HomeNotSet;
         defer allocator.free(home);
         return std.fs.path.join(allocator, &.{ home, claude.claude_dir, claude.settings_filename });
     }
@@ -54,17 +54,19 @@ fn resolveSettingsPath(allocator: std.mem.Allocator, global: bool) ![]u8 {
 }
 
 fn readIfExists(allocator: std.mem.Allocator, path: []const u8) !?[]u8 {
-    var file = std.fs.cwd().openFile(path, .{}) catch |e| switch (e) {
+    const file = compat.openFile(path, .{}) catch |e| switch (e) {
         error.FileNotFound => return null,
         else => return e,
     };
-    defer file.close();
-    return try file.readToEndAlloc(allocator, 1 << 20);
+    defer compat.closeFile(file);
+    return try compat.readFileToEndAlloc(file, allocator, 1 << 20);
 }
 
 fn writeAtomic(path: []const u8, bytes: []const u8) !void {
-    var file = try std.fs.cwd().createFile(path, .{ .truncate = true, .mode = 0o644 });
-    defer file.close();
-    try file.writeAll(bytes);
+    const file = try compat.createFile(path, .{
+        .truncate = true,
+        .permissions = compat.permissionsFromMode(0o644),
+    });
+    defer compat.closeFile(file);
+    try compat.writeFileAll(file, bytes);
 }
-

@@ -1,10 +1,11 @@
 const std = @import("std");
+const compat = @import("../compat.zig");
 const filterLs = @import("files_ls.zig").filterLs;
 
 test "smart mode shows ext counts and top dirs" {
-    var buf: std.ArrayList(u8) = .{};
+    var buf: std.ArrayList(u8) = .empty;
     defer buf.deinit(std.testing.allocator);
-    const w = buf.writer(std.testing.allocator);
+    const w = compat.listWriter(&buf, std.testing.allocator);
     try w.writeAll("total 200\n");
     try w.writeAll("drwxr-xr-x 5 u s 160 Apr 5 16:02 filters\n");
     try w.writeAll("drwxr-xr-x 5 u s 160 Apr 5 16:02 simd\n");

@@ -20,7 +20,7 @@ pub fn applyFilter(
     const lines = try lines_mod.splitLines(stripped, allocator);
     defer if (lines.len > 0) allocator.free(lines);
 
-    var kept: std.ArrayList([]const u8) = .{};
+    var kept: std.ArrayList([]const u8) = .empty;
     defer kept.deinit(allocator);
 
     for (lines) |line| {
@@ -80,7 +80,7 @@ fn joinOrEmpty(
     allocator: std.mem.Allocator,
 ) ![]const u8 {
     if (items.len == 0) return allocator.dupe(u8, def.on_empty);
-    var out: std.ArrayList(u8) = .{};
+    var out: std.ArrayList(u8) = .empty;
     errdefer out.deinit(allocator);
     for (items, 0..) |l, idx| {
         if (idx != 0) try out.append(allocator, '\n');

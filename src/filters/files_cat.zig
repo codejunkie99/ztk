@@ -1,4 +1,5 @@
 const std = @import("std");
+const compat = @import("../compat.zig");
 const aggressive = @import("files_cat_aggressive.zig");
 
 pub fn filterCat(input: []const u8, allocator: std.mem.Allocator) error{OutOfMemory}![]const u8 {
@@ -12,8 +13,8 @@ pub fn filterCat(input: []const u8, allocator: std.mem.Allocator) error{OutOfMem
         }
     }
 
-    var out: std.ArrayList(u8) = .{};
-    const w = out.writer(allocator);
+    var out: std.ArrayList(u8) = .empty;
+    const w = compat.listWriter(&out, allocator);
     var blank_run: usize = 0;
     var it = std.mem.splitScalar(u8, input, '\n');
 

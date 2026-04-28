@@ -1,4 +1,5 @@
 const std = @import("std");
+const compat = @import("../compat.zig");
 
 /// `head` and `tail` output is usually already small by nature. Our only
 /// job is to cap it at 50 lines and emit a truncation hint if the user
@@ -17,15 +18,15 @@ pub fn filterHeadTail(input: []const u8, allocator: std.mem.Allocator) error{Out
     if (total <= 40) return allocator.dupe(u8, input);
 
     // Split, keep first 20 and last 20
-    var lines: std.ArrayList([]const u8) = .{};
+    var lines: std.ArrayList([]const u8) = .empty;
     defer lines.deinit(allocator);
     var it = std.mem.splitScalar(u8, input, '\n');
     while (it.next()) |line| {
         try lines.append(allocator, line);
     }
 
-    var out: std.ArrayList(u8) = .{};
-    const w = out.writer(allocator);
+    var out: std.ArrayList(u8) = .empty;
+    const w = compat.listWriter(&out, allocator);
 
     const head_count: usize = 20;
     const tail_start: usize = if (lines.items.len > 20) lines.items.len - 20 else 0;
@@ -50,9 +51,9 @@ test "head/tail passthrough for small" {
 }
 
 test "head/tail truncates large" {
-    var buf: std.ArrayList(u8) = .{};
+    var buf: std.ArrayList(u8) = .empty;
     defer buf.deinit(std.testing.allocator);
-    const w = buf.writer(std.testing.allocator);
+    const w = compat.listWriter(&buf, std.testing.allocator);
     var i: usize = 0;
     while (i < 100) : (i += 1) try w.print("line{d}\n", .{i});
 

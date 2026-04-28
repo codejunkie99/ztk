@@ -1,4 +1,5 @@
 const std = @import("std");
+const compat = @import("../compat.zig");
 const filterGitDiff = @import("git_diff.zig").filterGitDiff;
 
 test "small diff passes through unchanged" {
@@ -20,9 +21,9 @@ test "small diff strips file headers" {
 }
 
 test "excess context trimmed, changes preserved" {
-    var buf: std.ArrayList(u8) = .{};
+    var buf: std.ArrayList(u8) = .empty;
     defer buf.deinit(std.testing.allocator);
-    const w = buf.writer(std.testing.allocator);
+    const w = compat.listWriter(&buf, std.testing.allocator);
     try w.writeAll("diff --git a/f b/f\n");
     for (0..5) |_| try w.writeAll(" context\n");
     try w.writeAll("@@ -1,20 +1,20 @@\n");
@@ -44,9 +45,9 @@ test "stat format passthrough" {
 }
 
 test "truncation count accuracy" {
-    var buf: std.ArrayList(u8) = .{};
+    var buf: std.ArrayList(u8) = .empty;
     defer buf.deinit(std.testing.allocator);
-    const w = buf.writer(std.testing.allocator);
+    const w = compat.listWriter(&buf, std.testing.allocator);
     try w.writeAll("diff --git a/f b/f\n");
     try w.writeAll("index abc..def 100644\n");
     try w.writeAll("@@ -1,200 +1,200 @@\n");

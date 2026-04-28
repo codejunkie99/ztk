@@ -1,4 +1,5 @@
 const std = @import("std");
+const compat = @import("../compat.zig");
 const types = @import("git_status_types.zig");
 const v1 = @import("git_status_v1.zig");
 
@@ -8,7 +9,7 @@ pub fn filterGitStatus(input: []const u8, allocator: std.mem.Allocator) error{Ou
     if (input.len < 80) return allocator.dupe(u8, input);
 
     var counts: types.Counts = .{};
-    var files: std.ArrayList([]const u8) = .{};
+    var files: std.ArrayList([]const u8) = .empty;
     defer files.deinit(allocator);
 
     switch (detectFormat(input)) {
@@ -19,8 +20,8 @@ pub fn filterGitStatus(input: []const u8, allocator: std.mem.Allocator) error{Ou
 
     if (counts.total() == 0) return std.fmt.allocPrint(allocator, "on {s}: clean", .{counts.branch});
 
-    var parts: std.ArrayList(u8) = .{};
-    const w = parts.writer(allocator);
+    var parts: std.ArrayList(u8) = .empty;
+    const w = compat.listWriter(&parts, allocator);
     try w.print("on {s}: ", .{counts.branch});
     try types.writeCounts(w, counts);
     try w.writeAll(" [");

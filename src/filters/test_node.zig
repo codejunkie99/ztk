@@ -1,4 +1,5 @@
 const std = @import("std");
+const compat = @import("../compat.zig");
 
 pub fn filterNodeTest(input: []const u8, allocator: std.mem.Allocator) error{OutOfMemory}![]const u8 {
     if (input.len == 0) return allocator.dupe(u8, "");
@@ -8,8 +9,8 @@ pub fn filterNodeTest(input: []const u8, allocator: std.mem.Allocator) error{Out
         return extractPassSummary(input, allocator);
     }
 
-    var out: std.ArrayList(u8) = .{};
-    const w = out.writer(allocator);
+    var out: std.ArrayList(u8) = .empty;
+    const w = compat.listWriter(&out, allocator);
     var failure_blocks: usize = 0;
     var context_remaining: usize = 0;
     var it = std.mem.splitScalar(u8, input, '\n');
@@ -74,8 +75,8 @@ fn isSummaryLine(line: []const u8) bool {
 }
 
 fn extractPassSummary(input: []const u8, allocator: std.mem.Allocator) error{OutOfMemory}![]const u8 {
-    var out: std.ArrayList(u8) = .{};
-    const w = out.writer(allocator);
+    var out: std.ArrayList(u8) = .empty;
+    const w = compat.listWriter(&out, allocator);
     var it = std.mem.splitScalar(u8, input, '\n');
     while (it.next()) |line| {
         if (isSummaryLine(line)) {

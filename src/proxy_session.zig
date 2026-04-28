@@ -9,6 +9,7 @@ const std = @import("std");
 const session_mod = @import("session.zig");
 const session_delta = @import("session_delta.zig");
 const comptime_filters = @import("filters/comptime.zig");
+const compat = @import("compat.zig");
 
 const session_dir = "/tmp";
 
@@ -26,7 +27,7 @@ pub fn applySession(
 
     const cmd_hash = std.hash.XxHash64.hash(0, cmd);
     const out_hash = std.hash.XxHash64.hash(0, filtered);
-    const now = std.time.nanoTimestamp();
+    const now = compat.nanoTimestamp();
 
     var replaced: ?[]const u8 = null;
 

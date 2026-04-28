@@ -1,4 +1,5 @@
 const std = @import("std");
+const compat = @import("../compat.zig");
 
 pub fn filterGoTest(input: []const u8, allocator: std.mem.Allocator) error{OutOfMemory}![]const u8 {
     if (input.len == 0) return allocator.dupe(u8, "");
@@ -19,16 +20,16 @@ fn isNdjson(input: []const u8) bool {
 fn filterNdjson(input: []const u8, allocator: std.mem.Allocator) error{OutOfMemory}![]const u8 {
     var pass_count: usize = 0;
     var fail_count: usize = 0;
-    var out: std.ArrayList(u8) = .{};
-    const w = out.writer(allocator);
+    var out: std.ArrayList(u8) = .empty;
+    const w = compat.listWriter(&out, allocator);
     var it = std.mem.splitScalar(u8, input, '\n');
 
     // First pass: collect fail names and count pass/fail
-    var names: std.ArrayList(u8) = .{};
+    var names: std.ArrayList(u8) = .empty;
     defer names.deinit(allocator);
-    var output_buf: std.ArrayList(u8) = .{};
+    var output_buf: std.ArrayList(u8) = .empty;
     defer output_buf.deinit(allocator);
-    const ob = output_buf.writer(allocator);
+    const ob = compat.listWriter(&output_buf, allocator);
 
     while (it.next()) |line| {
         const trimmed = std.mem.trim(u8, line, " \t\r");
@@ -41,7 +42,7 @@ fn filterNdjson(input: []const u8, allocator: std.mem.Allocator) error{OutOfMemo
             fail_count += 1;
             if (extractField(trimmed, "\"Test\":\"")) |name| {
                 if (name.len > 0) {
-                    try names.writer(allocator).print("FAIL: {s}\n", .{name});
+                    try names.print(allocator, "FAIL: {s}\n", .{name});
                 }
             }
         } else if (std.mem.eql(u8, action, "output")) {
@@ -89,8 +90,8 @@ fn writeUnescaped(w: anytype, raw: []const u8) error{OutOfMemory}!void {
 }
 
 fn filterPlainText(input: []const u8, allocator: std.mem.Allocator) error{OutOfMemory}![]const u8 {
-    var out: std.ArrayList(u8) = .{};
-    const w = out.writer(allocator);
+    var out: std.ArrayList(u8) = .empty;
+    const w = compat.listWriter(&out, allocator);
     var it = std.mem.splitScalar(u8, input, '\n');
     while (it.next()) |line| {
         if (std.mem.startsWith(u8, line, "=== RUN")) continue;

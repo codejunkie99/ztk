@@ -27,7 +27,7 @@ pub fn extractName(line: []const u8) ?[]const u8 {
         return if (trimmed.len == 0) null else trimmed;
     }
     if (i >= line.len) return null;
-    return std.mem.trimRight(u8, line[i..], " \t\r");
+    return std.mem.trimEnd(u8, line[i..], " \t\r");
 }
 
 test "extractName from ls -la line" {

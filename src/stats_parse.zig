@@ -62,7 +62,7 @@ pub fn parseLog(bytes: []const u8, allocator: std.mem.Allocator) !StatsData {
     }
 
     // Collect and sort by saved bytes descending
-    var entries: std.ArrayList(CmdEntry) = .{};
+    var entries: std.ArrayList(CmdEntry) = .empty;
     var map_it = map.iterator();
     while (map_it.next()) |e| try entries.append(allocator, e.value_ptr.*);
     const slice = try entries.toOwnedSlice(allocator);

@@ -1,4 +1,5 @@
 const std = @import("std");
+const compat = @import("../compat.zig");
 
 pub fn filterCargoBuild(input: []const u8, allocator: std.mem.Allocator) error{OutOfMemory}![]const u8 {
     if (input.len == 0) return allocator.dupe(u8, "cargo build: ok");
@@ -8,8 +9,8 @@ pub fn filterCargoBuild(input: []const u8, allocator: std.mem.Allocator) error{O
         return allocator.dupe(u8, "cargo build: ok");
     }
 
-    var out: std.ArrayList(u8) = .{};
-    const w = out.writer(allocator);
+    var out: std.ArrayList(u8) = .empty;
+    const w = compat.listWriter(&out, allocator);
     var in_block = false;
     var blocks: usize = 0;
     var it = std.mem.splitScalar(u8, input, '\n');
@@ -37,7 +38,7 @@ pub fn filterCargoBuild(input: []const u8, allocator: std.mem.Allocator) error{O
 }
 
 fn isNoise(line: []const u8) bool {
-    const t = std.mem.trimLeft(u8, line, " \t");
+    const t = std.mem.trimStart(u8, line, " \t");
     if (std.mem.startsWith(u8, t, "Compiling")) return true;
     if (std.mem.startsWith(u8, t, "Downloading")) return true;
     if (std.mem.startsWith(u8, t, "Finished")) return true;

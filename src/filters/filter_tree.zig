@@ -1,4 +1,5 @@
 const std = @import("std");
+const compat = @import("../compat.zig");
 
 /// tree output filter. Strips noise directories and caps the output
 /// at 80 lines. Detects tree-style output by the presence of the
@@ -6,8 +7,8 @@ const std = @import("std");
 pub fn filterTree(input: []const u8, allocator: std.mem.Allocator) error{OutOfMemory}![]const u8 {
     if (input.len == 0) return allocator.dupe(u8, "");
 
-    var out: std.ArrayList(u8) = .{};
-    const w = out.writer(allocator);
+    var out: std.ArrayList(u8) = .empty;
+    const w = compat.listWriter(&out, allocator);
     var it = std.mem.splitScalar(u8, input, '\n');
     var kept: usize = 0;
     var stripped: usize = 0;

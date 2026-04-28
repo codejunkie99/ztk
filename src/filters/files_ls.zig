@@ -10,9 +10,9 @@ const fmt = @import("files_ls_format.zig");
 pub fn filterLs(input: []const u8, allocator: std.mem.Allocator) error{OutOfMemory}![]const u8 {
     if (input.len == 0) return allocator.dupe(u8, "ls: empty");
 
-    var dirs: std.ArrayList([]const u8) = .{};
+    var dirs: std.ArrayList([]const u8) = .empty;
     defer dirs.deinit(allocator);
-    var files: std.ArrayList([]const u8) = .{};
+    var files: std.ArrayList([]const u8) = .empty;
     defer files.deinit(allocator);
     var counts: ext_mod.ExtCounts = .{};
 

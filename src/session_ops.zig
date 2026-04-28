@@ -4,6 +4,7 @@
 
 const std = @import("std");
 const session = @import("session.zig");
+const compat = @import("compat.zig");
 
 pub fn headerValid(self: *session.Session) bool {
     const h = self.header();
@@ -45,7 +46,7 @@ pub fn insert(
     category: u8,
 ) !void {
     const h = self.header();
-    const ts: u64 = @intCast(std.time.nanoTimestamp());
+    const ts: u64 = @intCast(compat.nanoTimestamp());
 
     if (lookup(self, cmd_hash)) |existing| {
         // In-place reuse when the new payload fits in the old slot.

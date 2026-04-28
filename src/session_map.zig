@@ -1,15 +1,17 @@
 const std = @import("std");
 const builtin = @import("builtin");
 const windows = std.os.windows;
+const compat = @import("compat.zig");
 const page_size = std.heap.page_size_min;
 const file_map_write: windows.DWORD = 0x0002;
+const page_readwrite: windows.DWORD = 0x0004;
 
 pub const Mapping = struct {
     map: []align(page_size) u8,
     handle: ?windows.HANDLE = null,
 };
 
-pub fn open(file: std.fs.File, len: usize, needs_init: bool) !Mapping {
+pub fn open(file: compat.File, len: usize, needs_init: bool) !Mapping {
     return if (builtin.os.tag == .windows) openWindows(file, len) else openPosix(file, len, needs_init);
 }
 
@@ -17,9 +19,9 @@ pub fn close(mapping: Mapping) void {
     if (builtin.os.tag == .windows) closeWindows(mapping) else closePosix(mapping);
 }
 
-fn openPosix(file: std.fs.File, len: usize, needs_init: bool) !Mapping {
-    if (needs_init) try std.posix.ftruncate(file.handle, @intCast(len));
-    return .{ .map = try std.posix.mmap(null, len, std.posix.PROT.READ | std.posix.PROT.WRITE, .{ .TYPE = .SHARED }, file.handle, 0) };
+fn openPosix(file: compat.File, len: usize, needs_init: bool) !Mapping {
+    if (needs_init) try file.setLength(compat.io(), @intCast(len));
+    return .{ .map = try std.posix.mmap(null, len, .{ .READ = true, .WRITE = true }, .{ .TYPE = .SHARED }, file.handle, 0) };
 }
 
 fn closePosix(mapping: Mapping) void {
@@ -27,9 +29,9 @@ fn closePosix(mapping: Mapping) void {
     std.posix.munmap(mapping.map);
 }
 
-fn openWindows(file: std.fs.File, len: usize) !Mapping {
+fn openWindows(file: compat.File, len: usize) !Mapping {
     const size: u64 = @intCast(len);
-    const handle = CreateFileMappingW(file.handle, null, windows.PAGE_READWRITE, @truncate(size >> 32), @truncate(size), null) orelse return lastWinErr();
+    const handle = CreateFileMappingW(file.handle, null, page_readwrite, @truncate(size >> 32), @truncate(size), null) orelse return lastWinErr();
     errdefer windows.CloseHandle(handle);
     const view = MapViewOfFile(handle, file_map_write, 0, 0, len) orelse return lastWinErr();
     const ptr: [*]align(page_size) u8 = @ptrCast(@alignCast(view));

@@ -1,11 +1,13 @@
 const std = @import("std");
 const session = @import("session.zig");
+const compat = @import("compat.zig");
 
 fn openTmp() !session.Session {
     var tmp = std.testing.tmpDir(.{});
     // Note: don't defer cleanup — caller manages lifecycle via close
-    var buf: [std.fs.max_path_bytes]u8 = undefined;
-    const path = try tmp.dir.realpath(".", &buf);
+    var buf: [std.Io.Dir.max_path_bytes]u8 = undefined;
+    const len = try tmp.dir.realPathFile(std.testing.io, ".", &buf);
+    const path = buf[0..len];
     return session.Session.open(path, std.testing.allocator);
 }
 
@@ -79,12 +81,13 @@ test "isExpired immutable never expires" {
 
 test "open recovers from truncated file" {
     var tmp = std.testing.tmpDir(.{});
-    var buf: [std.fs.max_path_bytes]u8 = undefined;
-    const path = try tmp.dir.realpath(".", &buf);
+    var buf: [std.Io.Dir.max_path_bytes]u8 = undefined;
+    const len = try tmp.dir.realPathFile(std.testing.io, ".", &buf);
+    const path = buf[0..len];
     // Pre-create a runt file (4 bytes < @sizeOf(Header)=16)
-    const f = try tmp.dir.createFile("ztk-state", .{ .truncate = true });
-    try f.writeAll("xy");
-    f.close();
+    const f = try tmp.dir.createFile(std.testing.io, "ztk-state", .{ .truncate = true });
+    try compat.writeFileAll(f, "xy");
+    compat.closeFile(f);
     var s = try session.Session.open(path, std.testing.allocator);
     defer s.close();
     try std.testing.expectEqual(session.MAGIC, s.header().magic);

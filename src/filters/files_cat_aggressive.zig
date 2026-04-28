@@ -1,4 +1,5 @@
 const std = @import("std");
+const compat = @import("../compat.zig");
 
 /// Aggressive signature extraction: keeps only top-level declarations
 /// (pub fn, const, struct/enum/class, import, etc) and drops function
@@ -6,13 +7,13 @@ const std = @import("std");
 /// Returns null if the input doesn't look like supported code.
 pub fn filterCatAggressive(input: []const u8, allocator: std.mem.Allocator) error{OutOfMemory}!?[]const u8 {
     const lang = detectLang(input) orelse return null;
-    var out: std.ArrayList(u8) = .{};
-    const w = out.writer(allocator);
+    var out: std.ArrayList(u8) = .empty;
+    const w = compat.listWriter(&out, allocator);
     var it = std.mem.splitScalar(u8, input, '\n');
     var kept: usize = 0;
 
     while (it.next()) |line| {
-        const trimmed = std.mem.trimLeft(u8, line, " \t");
+        const trimmed = std.mem.trimStart(u8, line, " \t");
         if (trimmed.len == 0) continue;
         if (isSignature(trimmed, lang)) {
             try w.writeAll(line);
@@ -40,7 +41,7 @@ fn detectLang(input: []const u8) ?Lang {
     var py_score: usize = 0;
     var it = std.mem.splitScalar(u8, input, '\n');
     while (it.next()) |line| {
-        const t = std.mem.trimLeft(u8, line, " \t");
+        const t = std.mem.trimStart(u8, line, " \t");
         if (std.mem.startsWith(u8, t, "const ") and std.mem.indexOf(u8, t, "@import") != null) zig_score += 2;
         if (std.mem.startsWith(u8, t, "pub fn ")) zig_score += 1;
         if (std.mem.startsWith(u8, t, "use ")) rust_score += 1;

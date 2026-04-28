@@ -1,6 +1,7 @@
 const std = @import("std");
 const builtin = @import("builtin");
 const comptime_filters = @import("../filters/comptime.zig");
+const compat = @import("../compat.zig");
 
 /// Claude Code PreToolUse hook entry point.
 ///
@@ -52,30 +53,28 @@ pub fn runRewrite(allocator: std.mem.Allocator) !u8 {
 
 fn debugLog(kind: []const u8, detail: []const u8) !void {
     const allocator = std.heap.page_allocator;
-    var owned_home: ?[]u8 = null;
-    const home = if (builtin.os.tag == .windows) blk: {
-        owned_home = std.process.getEnvVarOwned(allocator, "USERPROFILE") catch return;
-        break :blk owned_home.?;
-    } else std.posix.getenv("HOME") orelse return;
-    defer if (owned_home) |buf| allocator.free(buf);
+    const env_key = if (builtin.os.tag == .windows) "USERPROFILE" else "HOME";
+    const home = compat.getEnvOwned(allocator, env_key) catch return;
+    defer allocator.free(home);
     var buf: [512]u8 = undefined;
     const path = try std.fmt.bufPrint(&buf, "{s}/.local/share/ztk/hook-debug.log", .{home});
     if (std.fs.path.dirname(path)) |dir| {
-        std.fs.cwd().makePath(dir) catch {};
+        compat.makePath(dir) catch {};
     }
-    const f = std.fs.cwd().createFile(path, .{ .truncate = false, .mode = 0o644 }) catch return;
-    defer f.close();
-    f.seekFromEnd(0) catch {};
-    const ts = std.time.timestamp();
+    const f = compat.createFile(path, .{
+        .truncate = false,
+        .permissions = compat.permissionsFromMode(0o644),
+    }) catch return;
+    defer compat.closeFile(f);
+    const ts = compat.unixTimestamp();
     var line_buf: [1024]u8 = undefined;
     const max_detail = @min(detail.len, 200);
     const line = std.fmt.bufPrint(&line_buf, "{d}\t{s}\t{s}\n", .{ ts, kind, detail[0..max_detail] }) catch return;
-    _ = f.writeAll(line) catch {};
+    _ = compat.appendFileAll(f, line) catch {};
 }
 
 fn readStdin(allocator: std.mem.Allocator) ![]u8 {
-    const stdin = std.fs.File.stdin();
-    return stdin.readToEndAlloc(allocator, 1 << 20);
+    return compat.readStdinAlloc(allocator, 1 << 20);
 }
 
 /// Parse the Claude Code PreToolUse payload and return a dup'd copy of
@@ -111,18 +110,18 @@ fn emitRewrite(allocator: std.mem.Allocator, command: []const u8) !void {
     defer allocator.free(rewritten);
     const escaped = try jsonEscape(allocator, rewritten);
     defer allocator.free(escaped);
-    const out = std.fs.File.stdout();
     var buf: [8192]u8 = undefined;
-    const payload = try std.fmt.bufPrint(&buf,
+    const payload = try std.fmt.bufPrint(
+        &buf,
         "{{\"hookSpecificOutput\":{{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"ask\",\"permissionDecisionReason\":\"ztk auto-rewrite for token savings\",\"updatedInput\":{{\"command\":\"{s}\"}}}}}}\n",
         .{escaped},
     );
-    try out.writeAll(payload);
+    try compat.writeStdout(payload);
 }
 
 fn jsonEscape(allocator: std.mem.Allocator, input: []const u8) ![]u8 {
-    var out: std.ArrayList(u8) = .{};
-    const w = out.writer(allocator);
+    var out: std.ArrayList(u8) = .empty;
+    const w = compat.listWriter(&out, allocator);
     for (input) |c| {
         switch (c) {
             '"' => try w.writeAll("\\\""),

@@ -1,16 +1,18 @@
 const std = @import("std");
 const builtin = @import("builtin");
 const windows = std.os.windows;
+const compat = @import("compat.zig");
 const lockfile_fail_immediately: windows.DWORD = 0x00000001;
 const lockfile_exclusive_lock: windows.DWORD = 0x00000002;
 const whole_file: windows.DWORD = 0xffffffff;
 
-pub fn tryExclusive(file: std.fs.File) bool {
-    return if (builtin.os.tag == .windows) tryWindows(file.handle) else tryPosix(file.handle);
+pub fn tryExclusive(file: compat.File) bool {
+    _ = builtin;
+    return file.tryLock(compat.io(), .exclusive) catch false;
 }
 
-pub fn unlock(file: std.fs.File) void {
-    if (builtin.os.tag == .windows) unlockWindows(file.handle) else unlockPosix(file.handle);
+pub fn unlock(file: compat.File) void {
+    file.unlock(compat.io());
 }
 
 fn tryPosix(fd: std.posix.fd_t) bool {

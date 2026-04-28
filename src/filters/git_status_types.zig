@@ -1,4 +1,5 @@
 const std = @import("std");
+const compat = @import("../compat.zig");
 
 pub const Counts = struct {
     branch: []const u8 = "unknown",

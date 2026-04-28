@@ -1,4 +1,5 @@
 const std = @import("std");
+const compat = @import("../compat.zig");
 const ext_mod = @import("files_ls_ext.zig");
 
 /// Smart-mode formatter: emits "N dirs, M files (X .zig, Y other) [d1/, d2/]"
@@ -10,8 +11,8 @@ pub fn formatSmart(
     counts: *const ext_mod.ExtCounts,
     allocator: std.mem.Allocator,
 ) error{OutOfMemory}![]const u8 {
-    var out: std.ArrayList(u8) = .{};
-    const w = out.writer(allocator);
+    var out: std.ArrayList(u8) = .empty;
+    const w = compat.listWriter(&out, allocator);
     try w.print("{d} dirs, {d} files (", .{ dirs.len, files.len });
     const top = counts.topThree();
     var emitted: usize = 0;
@@ -45,8 +46,8 @@ pub fn formatVerbose(
     files: []const []const u8,
     allocator: std.mem.Allocator,
 ) error{OutOfMemory}![]const u8 {
-    var out: std.ArrayList(u8) = .{};
-    const w = out.writer(allocator);
+    var out: std.ArrayList(u8) = .empty;
+    const w = compat.listWriter(&out, allocator);
     try w.print("{d} dirs, {d} files [", .{ dirs.len, files.len });
     var emitted: usize = 0;
     for (dirs) |d| {

@@ -1,4 +1,5 @@
 const std = @import("std");
+const compat = @import("../compat.zig");
 
 /// gh (GitHub CLI) output filter. Handles formatted (not JSON) output
 /// from `gh pr list`, `gh issue list`, `gh run list`, `gh pr view`,
@@ -20,8 +21,8 @@ pub fn filterGh(input: []const u8, allocator: std.mem.Allocator) error{OutOfMemo
 }
 
 fn compressList(input: []const u8, allocator: std.mem.Allocator) error{OutOfMemory}![]const u8 {
-    var out: std.ArrayList(u8) = .{};
-    const w = out.writer(allocator);
+    var out: std.ArrayList(u8) = .empty;
+    const w = compat.listWriter(&out, allocator);
     var it = std.mem.splitScalar(u8, input, '\n');
     var count: usize = 0;
     while (it.next()) |line| {
@@ -44,8 +45,8 @@ fn compressList(input: []const u8, allocator: std.mem.Allocator) error{OutOfMemo
 }
 
 fn compressView(input: []const u8, allocator: std.mem.Allocator) error{OutOfMemory}![]const u8 {
-    var out: std.ArrayList(u8) = .{};
-    const w = out.writer(allocator);
+    var out: std.ArrayList(u8) = .empty;
+    const w = compat.listWriter(&out, allocator);
     var it = std.mem.splitScalar(u8, input, '\n');
     var body_lines: usize = 0;
     var in_body = false;
@@ -78,8 +79,8 @@ fn compressView(input: []const u8, allocator: std.mem.Allocator) error{OutOfMemo
 }
 
 fn capLines(input: []const u8, max: usize, allocator: std.mem.Allocator) error{OutOfMemory}![]const u8 {
-    var out: std.ArrayList(u8) = .{};
-    const w = out.writer(allocator);
+    var out: std.ArrayList(u8) = .empty;
+    const w = compat.listWriter(&out, allocator);
     var it = std.mem.splitScalar(u8, input, '\n');
     var n: usize = 0;
     while (it.next()) |line| {

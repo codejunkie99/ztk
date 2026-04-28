@@ -1,4 +1,5 @@
 const std = @import("std");
+const compat = @import("../compat.zig");
 const condense = @import("git_diff_condense.zig");
 
 pub fn filterGitDiff(input: []const u8, allocator: std.mem.Allocator) error{OutOfMemory}![]const u8 {
@@ -31,8 +32,8 @@ pub fn filterGitDiff(input: []const u8, allocator: std.mem.Allocator) error{OutO
 }
 
 fn stripFileHeaders(input: []const u8, allocator: std.mem.Allocator) error{OutOfMemory}![]const u8 {
-    var out: std.ArrayList(u8) = .{};
-    const w = out.writer(allocator);
+    var out: std.ArrayList(u8) = .empty;
+    const w = compat.listWriter(&out, allocator);
     var it = std.mem.splitScalar(u8, input, '\n');
     while (it.next()) |line| {
         if (isFileHeader(line)) continue;

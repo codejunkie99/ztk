@@ -1,4 +1,5 @@
 const std = @import("std");
+const compat = @import("../compat.zig");
 
 /// Filter `python3` script output. Strategy:
 ///  1. If a traceback is present, keep ONLY the traceback (drops normal stdout).
@@ -15,11 +16,11 @@ pub fn filterPython(input: []const u8, allocator: std.mem.Allocator) error{OutOf
     const tb_start = std.mem.indexOf(u8, input, "Traceback (most recent call last):") orelse
         return allocator.dupe(u8, input);
 
-    var out: std.ArrayList(u8) = .{};
-    const w = out.writer(allocator);
+    var out: std.ArrayList(u8) = .empty;
+    const w = compat.listWriter(&out, allocator);
 
     // Collect traceback lines until we hit a blank line or end-of-input.
-    var lines: std.ArrayList([]const u8) = .{};
+    var lines: std.ArrayList([]const u8) = .empty;
     defer lines.deinit(allocator);
     var it = std.mem.splitScalar(u8, input[tb_start..], '\n');
     while (it.next()) |line| {
@@ -76,9 +77,9 @@ test "python keeps short traceback" {
 }
 
 test "python truncates long traceback" {
-    var buf: std.ArrayList(u8) = .{};
+    var buf: std.ArrayList(u8) = .empty;
     defer buf.deinit(std.testing.allocator);
-    const w = buf.writer(std.testing.allocator);
+    const w = compat.listWriter(&buf, std.testing.allocator);
     try w.writeAll("Traceback (most recent call last):\n");
     var i: usize = 0;
     while (i < 20) : (i += 1) {

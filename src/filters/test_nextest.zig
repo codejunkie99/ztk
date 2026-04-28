@@ -1,4 +1,5 @@
 const std = @import("std");
+const compat = @import("../compat.zig");
 
 pub fn filterCargoNextest(input: []const u8, allocator: std.mem.Allocator) error{OutOfMemory}![]const u8 {
     if (input.len == 0) return allocator.dupe(u8, "");
@@ -19,12 +20,12 @@ fn formatPassSummary(input: []const u8, allocator: std.mem.Allocator) error{OutO
 }
 
 fn formatFailSummary(input: []const u8, allocator: std.mem.Allocator) error{OutOfMemory}![]const u8 {
-    var out: std.ArrayList(u8) = .{};
-    const w = out.writer(allocator);
+    var out: std.ArrayList(u8) = .empty;
+    const w = compat.listWriter(&out, allocator);
     var fail_count: usize = 0;
     var it = std.mem.splitScalar(u8, input, '\n');
     while (it.next()) |line| {
-        const t = std.mem.trimLeft(u8, line, " \t");
+        const t = std.mem.trimStart(u8, line, " \t");
         if (std.mem.startsWith(u8, t, "Summary [")) break;
         if (std.mem.startsWith(u8, t, "FAIL [")) {
             fail_count += 1;
@@ -53,7 +54,7 @@ fn parsePassed(line: []const u8) usize {
 fn findSummary(input: []const u8) ?[]const u8 {
     var it = std.mem.splitScalar(u8, input, '\n');
     while (it.next()) |line| {
-        const t = std.mem.trimLeft(u8, line, " \t");
+        const t = std.mem.trimStart(u8, line, " \t");
         if (std.mem.startsWith(u8, t, "Summary [")) return t;
     }
     return null;

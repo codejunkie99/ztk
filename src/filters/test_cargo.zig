@@ -1,4 +1,5 @@
 const std = @import("std");
+const compat = @import("../compat.zig");
 
 const State = enum { compiling, testing, failures, summary };
 
@@ -12,8 +13,8 @@ pub fn filterCargoTest(input: []const u8, allocator: std.mem.Allocator) error{Ou
         return extractPassSummary(input, allocator);
     }
 
-    var out: std.ArrayList(u8) = .{};
-    const w = out.writer(allocator);
+    var out: std.ArrayList(u8) = .empty;
+    const w = compat.listWriter(&out, allocator);
     var state: State = .compiling;
     var failure_blocks: usize = 0;
     var it = std.mem.splitScalar(u8, input, '\n');

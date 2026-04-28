@@ -1,10 +1,11 @@
 const std = @import("std");
+const compat = @import("../compat.zig");
 
 const TscEntry = struct { file: []const u8, count: usize, samples: [3][]const u8 };
 
 pub fn filterTsc(input: []const u8, allocator: std.mem.Allocator) error{OutOfMemory}![]const u8 {
     if (input.len == 0) return allocator.dupe(u8, "tsc: ok");
-    var entries: std.ArrayList(TscEntry) = .{};
+    var entries: std.ArrayList(TscEntry) = .empty;
     defer entries.deinit(allocator);
     var it = std.mem.splitScalar(u8, input, '\n');
     while (it.next()) |line| {
@@ -12,8 +13,8 @@ pub fn filterTsc(input: []const u8, allocator: std.mem.Allocator) error{OutOfMem
         try addTsc(&entries, allocator, file, line);
     }
     if (entries.items.len == 0) return allocator.dupe(u8, "tsc: ok");
-    var out: std.ArrayList(u8) = .{};
-    const w = out.writer(allocator);
+    var out: std.ArrayList(u8) = .empty;
+    const w = compat.listWriter(&out, allocator);
     for (entries.items) |e| {
         try w.print("{s}: {d} errors\n", .{ e.file, e.count });
         const n = @min(e.count, 3);

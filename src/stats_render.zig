@@ -32,17 +32,13 @@ fn renderBox(w: anytype, d: *const parse.StatsData) !void {
     try w.writeAll(D ++ "  │" ++ R ++ G ++ "  ⚡ ztk Token Savings                        " ++ R ++ D ++ "│\n" ++ R);
     try w.writeAll(D ++ "  ├──────────────────────────────────────────────┤\n" ++ R);
 
-    const s1 = try std.fmt.bufPrint(&buf,
-        D ++ "  │" ++ R ++ "  Commands:  " ++ W ++ "{d: <6}" ++ R ++
+    const s1 = try std.fmt.bufPrint(&buf, D ++ "  │" ++ R ++ "  Commands:  " ++ W ++ "{d: <6}" ++ R ++
         "  Input: " ++ W ++ "{s: <8}" ++ R ++
-        "  Output: " ++ W ++ "{s}" ++ R ++ "\n",
-        .{ d.total_commands, fmtSz(&b1, d.total_raw), fmtSz(&b2, d.total_filtered) });
+        "  Output: " ++ W ++ "{s}" ++ R ++ "\n", .{ d.total_commands, fmtSz(&b1, d.total_raw), fmtSz(&b2, d.total_filtered) });
     try w.writeAll(s1);
 
-    const s2 = try std.fmt.bufPrint(&buf,
-        D ++ "  │" ++ R ++ "  Saved:     " ++ G ++ "{s: <6}" ++ R ++
-        "  " ++ G ++ "({d}.{d}% reduction)" ++ R ++ "\n",
-        .{ fmtSz(&b3, saved), pct / 10, pct % 10 });
+    const s2 = try std.fmt.bufPrint(&buf, D ++ "  │" ++ R ++ "  Saved:     " ++ G ++ "{s: <6}" ++ R ++
+        "  " ++ G ++ "({d}.{d}% reduction)" ++ R ++ "\n", .{ fmtSz(&b3, saved), pct / 10, pct % 10 });
     try w.writeAll(s2);
 
     // Sparkline meter
@@ -86,8 +82,7 @@ fn renderRow(w: anytype, e: parse.CmdEntry, rank: usize, max_saved: u64) !void {
     var buf: [256]u8 = undefined;
     var sb: [32]u8 = undefined;
     const cmd = if (e.command.len > 24) e.command[0..24] else e.command;
-    const line = try std.fmt.bufPrint(&buf,
-        "  {d: >2}. {s: <24} {d: >5}  {s: >8} ", .{ rank, cmd, e.count, fmtSz(&sb, saved) });
+    const line = try std.fmt.bufPrint(&buf, "  {d: >2}. {s: <24} {d: >5}  {s: >8} ", .{ rank, cmd, e.count, fmtSz(&sb, saved) });
     try w.writeAll(line);
     try w.writeAll(color);
     var pb: [16]u8 = undefined;
@@ -97,9 +92,7 @@ fn renderRow(w: anytype, e: parse.CmdEntry, rank: usize, max_saved: u64) !void {
     // Gradient bar: bright blocks that fade
     var i: usize = 0;
     while (i < bar_len) : (i += 1) {
-        const shade: []const u8 = if (i < bar_len / 3) "\x1b[38;5;46m█"
-            else if (i < 2 * bar_len / 3) "\x1b[38;5;34m▓"
-            else "\x1b[38;5;28m▒";
+        const shade: []const u8 = if (i < bar_len / 3) "\x1b[38;5;46m█" else if (i < 2 * bar_len / 3) "\x1b[38;5;34m▓" else "\x1b[38;5;28m▒";
         try w.writeAll(shade);
     }
     try w.writeAll(R);

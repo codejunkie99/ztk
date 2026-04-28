@@ -1,4 +1,5 @@
 const std = @import("std");
+const compat = @import("../compat.zig");
 const runtime = @import("runtime.zig");
 
 const A = std.testing.allocator;
@@ -20,11 +21,11 @@ test "make on_empty when all stripped" {
 }
 
 test "df filter limits lines" {
-    var buf: std.ArrayList(u8) = .{};
+    var buf: std.ArrayList(u8) = .empty;
     defer buf.deinit(A);
     var i: usize = 0;
     while (i < 30) : (i += 1) {
-        try buf.writer(A).print("line{d}\n", .{i});
+        try buf.print(A, "line{d}\n", .{i});
     }
     const out = (try runtime.dispatch("df -h", buf.items, A)) orelse return error.NoMatch;
     defer A.free(out);
@@ -44,11 +45,11 @@ test "no match returns null" {
 }
 
 test "ping filter caps at 5 lines" {
-    var buf: std.ArrayList(u8) = .{};
+    var buf: std.ArrayList(u8) = .empty;
     defer buf.deinit(A);
     var i: usize = 0;
     while (i < 10) : (i += 1) {
-        try buf.writer(A).print("64 bytes from host: seq={d}\n", .{i});
+        try buf.print(A, "64 bytes from host: seq={d}\n", .{i});
     }
     const out = (try runtime.dispatch("ping example.com", buf.items, A)) orelse return error.NoMatch;
     defer A.free(out);
