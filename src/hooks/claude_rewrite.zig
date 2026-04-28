@@ -153,6 +153,10 @@ test "extractCommand fails on missing field" {
 test "hasFilterFor detects known command prefix" {
     try std.testing.expect(hasFilterFor("git status"));
     try std.testing.expect(hasFilterFor("git status -s"));
+    try std.testing.expect(hasFilterFor("rg reducer src"));
+    try std.testing.expect(hasFilterFor("jest --runInBand"));
+    try std.testing.expect(hasFilterFor("pnpm test"));
+    try std.testing.expect(hasFilterFor("mypy src"));
     try std.testing.expect(!hasFilterFor("git statusfoo"));
     try std.testing.expect(!hasFilterFor("unknown_tool"));
 }

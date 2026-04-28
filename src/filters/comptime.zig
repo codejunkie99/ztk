@@ -17,6 +17,9 @@ const files_headtail = @import("files_headtail.zig");
 const files_python = @import("files_python.zig");
 const filter_build = @import("filter_build.zig");
 const filter_zig = @import("filter_zig.zig");
+const filter_mypy = @import("filter_mypy.zig");
+const filter_go_build = @import("filter_go_build.zig");
+const filter_golangci = @import("filter_golangci.zig");
 const docker = @import("docker.zig");
 const kubectl = @import("kubectl.zig");
 const filter_curl = @import("filter_curl.zig");
@@ -61,16 +64,28 @@ const specs = [_]Spec{
     .{ .command = "cargo nextest", .filter = &test_nextest.filterCargoNextest, .stateful = true, .category = .medium },
     .{ .command = "pytest", .filter = &test_pytest.filterPytest, .stateful = true, .category = .medium },
     .{ .command = "go test", .filter = &test_go.filterGoTest, .stateful = true, .category = .medium },
+    .{ .command = "go build", .filter = &filter_go_build.filterGoBuild, .stateful = true, .category = .medium },
+    .{ .command = "golangci-lint", .filter = &filter_golangci.filterGolangci, .stateful = true, .category = .medium },
     .{ .command = "npm test", .filter = &test_node.filterNodeTest, .stateful = true, .category = .medium },
+    .{ .command = "npm run test", .filter = &test_node.filterNodeTest, .stateful = true, .category = .medium },
+    .{ .command = "pnpm test", .filter = &test_node.filterNodeTest, .stateful = true, .category = .medium },
+    .{ .command = "yarn test", .filter = &test_node.filterNodeTest, .stateful = true, .category = .medium },
+    .{ .command = "jest", .filter = &test_node.filterNodeTest, .stateful = true, .category = .medium },
+    .{ .command = "npx jest", .filter = &test_node.filterNodeTest, .stateful = true, .category = .medium },
+    .{ .command = "npx vitest", .filter = &test_node.filterNodeTest, .stateful = true, .category = .medium },
     .{ .command = "vitest", .filter = &test_node.filterNodeTest, .stateful = true, .category = .medium },
+    .{ .command = "playwright test", .filter = &test_node.filterNodeTest, .stateful = true, .category = .medium },
     .{ .command = "ls", .filter = &files_ls.filterLs, .stateful = false, .category = .fast_changing },
     .{ .command = "cat", .filter = &files_cat.filterCat, .stateful = false, .category = .immutable },
     .{ .command = "grep", .filter = &files_grep.filterGrep, .stateful = false, .category = .fast_changing },
+    .{ .command = "rg", .filter = &files_grep.filterGrep, .stateful = false, .category = .fast_changing },
     .{ .command = "find", .filter = &files_find.filterFind, .stateful = false, .category = .fast_changing },
     .{ .command = "cargo build", .filter = &filter_build.filterCargoBuild, .stateful = false, .category = .mutation },
+    .{ .command = "cargo check", .filter = &filter_build.filterCargoBuild, .stateful = true, .category = .medium },
     .{ .command = "tsc", .filter = &filter_build.filterTsc, .stateful = true, .category = .medium },
     .{ .command = "eslint", .filter = &lint.filterLint, .stateful = true, .category = .medium },
     .{ .command = "ruff", .filter = &lint.filterLint, .stateful = true, .category = .medium },
+    .{ .command = "mypy", .filter = &filter_mypy.filterMypy, .stateful = true, .category = .medium },
     .{ .command = "clippy", .filter = &lint.filterLint, .stateful = true, .category = .medium },
     .{ .command = "cargo clippy", .filter = &lint.filterLint, .stateful = true, .category = .medium },
     // Additional filters
@@ -92,7 +107,7 @@ const specs = [_]Spec{
 };
 
 comptime {
-    @setEvalBranchQuota(40000);
+    @setEvalBranchQuota(80000);
     for (specs, 0..) |a, i| {
         for (specs[i + 1 ..]) |b| {
             if (std.hash.XxHash64.hash(0, a.command) == std.hash.XxHash64.hash(0, b.command)) {
@@ -143,4 +158,70 @@ pub const spec_names: [specs.len][]const u8 = blk: {
 test "dispatch returns null for unknown or empty command" {
     try std.testing.expect(dispatch("nonexistent_xyz", "", std.testing.allocator) == null);
     try std.testing.expect(dispatch("", "", std.testing.allocator) == null);
+}
+
+test "dispatch covers phase 2 common developer loop commands" {
+    const A = std.testing.allocator;
+    const sample_issue = "src/app.ts:12: error: example\n";
+    const sample_test = "Tests: 1 passed, 1 total\n";
+
+    const cases = [_]struct {
+        command: []const u8,
+        input: []const u8,
+    }{
+        .{ .command = "rg reducer src", .input = "src/app.ts:1:reducer\nsrc/store.ts:2:reducer\n" },
+        .{ .command = "jest --runInBand", .input = sample_test },
+        .{ .command = "npx vitest run", .input = sample_test },
+        .{ .command = "npm run test -- --watch=false", .input = sample_test },
+        .{ .command = "pnpm test", .input = sample_test },
+        .{ .command = "yarn test", .input = sample_test },
+        .{ .command = "playwright test", .input = sample_test },
+        .{ .command = "cargo check", .input = "error: example\n  --> src/lib.rs:1:1\n" },
+        .{ .command = "mypy src", .input = sample_issue },
+        .{ .command = "go build ./...", .input = "./main.go:10:2: undefined: missing\n" },
+        .{ .command = "golangci-lint run", .input = sample_issue },
+    };
+
+    for (cases) |case| {
+        const result = dispatch(case.command, case.input, A) orelse {
+            std.debug.print("missing dispatch for {s}\n", .{case.command});
+            return error.TestExpectedEqual;
+        };
+        if (result.output.len > 0 and result.output.ptr != case.input.ptr) {
+            A.free(result.output);
+        }
+    }
+}
+
+test "dispatch uses dedicated structured phase 2 filters" {
+    const A = std.testing.allocator;
+
+    const mypy = dispatch(
+        "mypy src",
+        "src/app.py:12: error: Incompatible return value type (got \"int\", expected \"str\")  [return-value]\nsrc/db.py:44: error: Item \"None\" of \"User | None\" has no attribute \"email\"  [union-attr]\nFound 2 errors in 2 files (checked 12 source files)\n",
+        A,
+    ) orelse return error.TestExpectedEqual;
+    defer A.free(mypy.output);
+    try std.testing.expect(std.mem.indexOf(u8, mypy.output, "mypy: 2 errors in 2 files") != null);
+    try std.testing.expect(std.mem.indexOf(u8, mypy.output, "L12 [return-value]") != null);
+    try std.testing.expect(std.mem.indexOf(u8, mypy.output, "Found 2 errors") == null);
+
+    const go_build = dispatch(
+        "go build ./...",
+        "# app\n./cmd/app/main.go:10:2: undefined: missing\n./pkg/api/api.go:22:14: cannot use x as string value\n",
+        A,
+    ) orelse return error.TestExpectedEqual;
+    defer A.free(go_build.output);
+    try std.testing.expect(std.mem.indexOf(u8, go_build.output, "go build: 2 errors") != null);
+    try std.testing.expect(std.mem.indexOf(u8, go_build.output, "# app") == null);
+
+    const golangci = dispatch(
+        "golangci-lint run",
+        "{\"Issues\":[{\"FromLinter\":\"revive\",\"Text\":\"exported function Run should have comment\",\"Pos\":{\"Filename\":\"cmd/app/main.go\",\"Line\":8,\"Column\":1},\"SourceLines\":[\"func Run() {}\"]},{\"FromLinter\":\"ineffassign\",\"Text\":\"ineffectual assignment to err\",\"Pos\":{\"Filename\":\"pkg/api/api.go\",\"Line\":12,\"Column\":2},\"SourceLines\":[\"err := call()\"]}]}\n",
+        A,
+    ) orelse return error.TestExpectedEqual;
+    defer A.free(golangci.output);
+    try std.testing.expect(std.mem.indexOf(u8, golangci.output, "golangci-lint: 2 issues in 2 files") != null);
+    try std.testing.expect(std.mem.indexOf(u8, golangci.output, "revive: 1") != null);
+    try std.testing.expect(std.mem.indexOf(u8, golangci.output, "cmd/app/main.go:8") != null);
 }

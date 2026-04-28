@@ -32,6 +32,32 @@ test "single file with multiple errors" {
     try std.testing.expect(std.mem.indexOf(u8, r, "3 issues in 1 files") != null);
 }
 
+test "keeps representative diagnostic messages" {
+    const input =
+        \\src/app.py:12: error: Incompatible return value type (got "int", expected "str")  [return-value]
+        \\src/db.py:44: error: Item "None" of "User | None" has no attribute "email"  [union-attr]
+        \\Found 2 errors in 2 files (checked 12 source files)
+    ;
+    const r = try lint.filterLint(input, std.testing.allocator);
+    defer std.testing.allocator.free(r);
+    try std.testing.expect(std.mem.indexOf(u8, r, "Incompatible return value type") != null);
+    try std.testing.expect(std.mem.indexOf(u8, r, "has no attribute") != null);
+}
+
+test "short diagnostics do not expand" {
+    const input =
+        \\src/app.py:12: error: Incompatible return value type (got "int", expected "str")  [return-value]
+        \\src/db.py:44: error: Item "None" of "User | None" has no attribute "email"  [union-attr]
+        \\Found 2 errors in 2 files (checked 12 source files)
+    ;
+    const r = try lint.filterLint(input, std.testing.allocator);
+    defer std.testing.allocator.free(r);
+    try std.testing.expect(r.len < input.len);
+    try std.testing.expect(std.mem.indexOf(u8, r, "Found 2 errors") == null);
+    try std.testing.expect(std.mem.indexOf(u8, r, "Incompatible return value type") != null);
+    try std.testing.expect(std.mem.indexOf(u8, r, "has no attribute") != null);
+}
+
 test "mixed formats group correctly" {
     const input =
         \\src/a.ts:10:5: error Missing semicolon

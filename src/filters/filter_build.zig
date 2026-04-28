@@ -37,6 +37,54 @@ test "cargo build keeps error blocks with continuation" {
     try std.testing.expect(std.mem.indexOf(u8, r, "Finished") == null);
 }
 
+test "cargo build strips rustc code gutters but keeps locations and notes" {
+    const input =
+        \\error[E0425]: cannot find value `missing` in this scope
+        \\  --> src/lib.rs:12:9
+        \\   |
+        \\12 |         missing
+        \\   |         ^^^^^^^ not found in this scope
+        \\
+        \\warning: unused variable: `x`
+        \\  --> src/main.rs:3:9
+        \\   |
+        \\3  |     let x = 1;
+        \\   |         ^ help: if this is intentional, prefix it with an underscore: `_x`
+    ;
+    const r = try filterCargoBuild(input, std.testing.allocator);
+    defer std.testing.allocator.free(r);
+    try std.testing.expect(r.len < input.len);
+    try std.testing.expect(std.mem.indexOf(u8, r, "src/lib.rs:12:9") != null);
+    try std.testing.expect(std.mem.indexOf(u8, r, "not found in this scope") != null);
+    try std.testing.expect(std.mem.indexOf(u8, r, "prefix it with an underscore") != null);
+    try std.testing.expect(std.mem.indexOf(u8, r, "12 |") == null);
+    try std.testing.expect(std.mem.indexOf(u8, r, "^^^^^^") == null);
+}
+
+test "cargo build preserves notes from multiple diagnostic blocks" {
+    const input =
+        \\error[E0308]: mismatched types
+        \\  --> src/lib.rs:8:5
+        \\   |
+        \\8  |     42
+        \\   |     ^^ expected `String`, found integer
+        \\
+        \\error: aborting due to previous error
+        \\
+        \\warning: unreachable code
+        \\  --> src/main.rs:4:5
+        \\   |
+        \\4  |     println!("x");
+        \\   |     ^^^^^^^^^^^^^ unreachable statement
+    ;
+    const r = try filterCargoBuild(input, std.testing.allocator);
+    defer std.testing.allocator.free(r);
+    try std.testing.expect(std.mem.indexOf(u8, r, "mismatched types") != null);
+    try std.testing.expect(std.mem.indexOf(u8, r, "expected `String`, found integer") != null);
+    try std.testing.expect(std.mem.indexOf(u8, r, "unreachable statement") != null);
+    try std.testing.expect(std.mem.indexOf(u8, r, "aborting due to previous error") == null);
+}
+
 test "tsc groups errors by file" {
     const input =
         \\src/a.ts(10,5): error TS2304: Cannot find name 'foo'.

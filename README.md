@@ -91,15 +91,15 @@ ztk runs the command normally, captures the output, compresses it through a six-
 
 ## Supported Commands
 
-### 56 built-in filters across every category
+### Built-in filters across every category
 
 **Git**: status, diff, log, add, commit, push
-**Test runners**: cargo test, cargo nextest, pytest, go test, npm test, vitest
-**File ops**: ls, cat, find, grep, wc, head, tail, tree
-**Build tools**: cargo build, tsc, zig build
-**Linters**: eslint, ruff, clippy
-**Infrastructure**: docker, kubectl, curl, env
-**Utilities**: json, gh, python tracebacks, log deduplication
+**Test runners**: cargo test, cargo nextest, pytest, go test, npm test, npm run test, pnpm test, yarn test, jest, vitest, npx jest, npx vitest, Playwright
+**File ops**: ls, cat, find, grep, rg, wc, head, tail, tree
+**Build tools**: cargo build, cargo check, go build, tsc, zig build
+**Linters**: eslint, ruff, mypy, clippy, golangci-lint
+**Infrastructure**: docker, docker compose, kubectl, curl, env
+**Utilities**: json, gh, gh checks, python tracebacks, log deduplication
 
 Plus **25 regex-based filters** for make, terraform, helm, brew, pip, pnpm, bundle, gradle, mvn, dotnet, wget, prettier, rspec, rubocop, rake, psql, aws, and more.
 
@@ -127,7 +127,7 @@ Mutation commands like `git add` automatically invalidate related caches.
 
 **SIMD text processing.** Line splitting and ANSI escape stripping use `@Vector(16, u8)` for hardware-accelerated processing on both ARM NEON and x86 SSE2.
 
-**217 tests.** Every filter, every edge case, every state machine. The regex engine alone has 11 tests covering catastrophic backtracking prevention.
+**231 tests.** Every filter, every edge case, every state machine. The regex engine alone has 11 tests covering catastrophic backtracking prevention.
 
 ## For AI Tool Developers
 
@@ -139,7 +139,7 @@ Adding support for other tools (Cursor, Gemini CLI, Copilot) is straightforward.
 
 ```bash
 zig build              # Build
-zig build test         # Run 217 tests
+zig build test         # Run 231 tests
 zig build run -- stats # Run with args
 zig build cross        # Cross-compile to 4 targets
 ```

@@ -22,8 +22,10 @@ pub fn filterNodeTest(input: []const u8, allocator: std.mem.Allocator) error{Out
         }
         if (context_remaining > 0) {
             if (failure_blocks <= 5) {
-                try w.writeAll(line);
-                try w.writeByte('\n');
+                if (!isSummaryLine(line)) {
+                    try w.writeAll(line);
+                    try w.writeByte('\n');
+                }
             }
             context_remaining -= 1;
         }
@@ -60,6 +62,8 @@ fn hasSummary(input: []const u8) bool {
 
 fn isFailureLine(line: []const u8) bool {
     if (std.mem.indexOf(u8, line, "FAIL") != null) return true;
+    const trimmed = std.mem.trimStart(u8, line, " \t");
+    if (std.mem.startsWith(u8, trimmed, "x ")) return true;
     if (std.mem.indexOf(u8, line, "\xc3\x97") != null) return true; // U+00D7 ×
     if (std.mem.indexOf(u8, line, "\xe2\x9c\x95") != null) return true; // U+2715 ✕
     if (std.mem.indexOf(u8, line, "\xe2\x9c\x97") != null) return true; // U+2717 ✗
@@ -71,7 +75,17 @@ fn isSummaryLine(line: []const u8) bool {
     if (std.mem.indexOf(u8, line, "Test Suites:") != null) return true;
     if (std.mem.indexOf(u8, line, "Time:") != null) return true;
     if (std.mem.indexOf(u8, line, "Tests ") != null) return true;
+    const trimmed = std.mem.trimStart(u8, line, " \t");
+    if (startsWithCountSummary(trimmed, " failed")) return true;
+    if (startsWithCountSummary(trimmed, " passed")) return true;
     return false;
+}
+
+fn startsWithCountSummary(line: []const u8, suffix: []const u8) bool {
+    var i: usize = 0;
+    while (i < line.len and std.ascii.isDigit(line[i])) : (i += 1) {}
+    if (i == 0) return false;
+    return std.mem.startsWith(u8, line[i..], suffix);
 }
 
 fn extractPassSummary(input: []const u8, allocator: std.mem.Allocator) error{OutOfMemory}![]const u8 {
@@ -127,6 +141,43 @@ test "failures show details and summary" {
     try std.testing.expect(std.mem.indexOf(u8, result, "FAIL") != null);
     try std.testing.expect(std.mem.indexOf(u8, result, "1 failed") != null);
     try std.testing.expect(std.mem.indexOf(u8, result, "Tests:") != null);
+}
+
+test "playwright failure keeps failed test and error context" {
+    const input =
+        \\Running 3 tests using 2 workers
+        \\  ok 1 tests/home.spec.ts:3:1 › renders home page
+        \\  x  2 tests/login.spec.ts:8:1 › rejects bad password
+        \\    Error: expect(locator).toBeVisible() failed
+        \\
+        \\    Locator: getByText('Invalid password')
+        \\    Expected: visible
+        \\    Received: hidden
+        \\
+        \\  1 failed
+        \\  2 passed (4.8s)
+    ;
+    const result = try filterNodeTest(input, std.testing.allocator);
+    defer std.testing.allocator.free(result);
+    try std.testing.expect(std.mem.indexOf(u8, result, "rejects bad password") != null);
+    try std.testing.expect(std.mem.indexOf(u8, result, "Expected: visible") != null);
+    try std.testing.expect(std.mem.indexOf(u8, result, "1 failed") != null);
+    try std.testing.expectEqual(@as(usize, 1), std.mem.count(u8, result, "Error:"));
+}
+
+test "playwright short failure does not duplicate summary" {
+    const input =
+        \\Running 3 tests using 2 workers
+        \\  x  2 tests/login.spec.ts:8:1 › rejects bad password
+        \\    Error: expect(locator).toBeVisible() failed
+        \\
+        \\  1 failed
+        \\  2 passed (4.8s)
+    ;
+    const result = try filterNodeTest(input, std.testing.allocator);
+    defer std.testing.allocator.free(result);
+    try std.testing.expectEqual(@as(usize, 1), std.mem.count(u8, result, "1 failed"));
+    try std.testing.expectEqual(@as(usize, 1), std.mem.count(u8, result, "2 passed"));
 }
 
 test "empty input returns empty" {

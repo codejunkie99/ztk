@@ -67,6 +67,10 @@ test {
     _ = @import("filters/filter_build.zig");
     _ = @import("filters/filter_build_cargo.zig");
     _ = @import("filters/filter_build_tsc.zig");
+    _ = @import("filters/filter_diag_block.zig");
+    _ = @import("filters/filter_mypy.zig");
+    _ = @import("filters/filter_go_build.zig");
+    _ = @import("filters/filter_golangci.zig");
     _ = @import("filters/lint.zig");
     _ = @import("filters/lint_test.zig");
     _ = @import("session.zig");
