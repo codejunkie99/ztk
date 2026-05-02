@@ -103,4 +103,5 @@ test {
     _ = @import("hooks/claude_init_build.zig");
     _ = @import("hooks/claude_rewrite.zig");
     _ = @import("hooks/claude_test.zig");
+    _ = @import("update.zig");
 }
