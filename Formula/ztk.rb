@@ -1,8 +1,8 @@
 class Ztk < Formula
   desc "CLI proxy that reduces LLM token consumption by 78%+. Zero dependencies."
   homepage "https://github.com/codejunkie99/ztk"
-  url "https://github.com/codejunkie99/ztk/archive/refs/tags/v0.2.1.tar.gz"
-  sha256 "5fd42868cd4cf56842893326efd9f9c3be5e138bde06e56d52abd78c5b67c577"
+  url "https://github.com/codejunkie99/ztk/archive/refs/tags/v0.2.2.tar.gz"
+  sha256 "e019acf6035072e0cae78d9f0c483867879f886451978869ff20dc9b60237b85"
   license "MIT"
 
   depends_on "zig" => :build
@@ -15,6 +15,6 @@ class Ztk < Formula
   end
 
   test do
-    assert_match "ztk 0.2.1", shell_output("#{bin}/ztk --version")
+    assert_match "ztk 0.2.2", shell_output("#{bin}/ztk --version")
   end
 end
