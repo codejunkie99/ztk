@@ -61,7 +61,12 @@ ztk run cargo test
 
 # See your savings:
 ztk stats
+
+# Update a local source install:
+ztk update
 ```
+
+For Homebrew installs, use `brew upgrade codejunkie99/ztk/ztk`; `ztk update` will not overwrite a Homebrew-managed binary.
 
 ## How It Works
 

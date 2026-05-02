@@ -7,9 +7,11 @@ const proxy = @import("proxy.zig");
 const claude = @import("hooks/claude.zig");
 const filter_cmd = @import("filter_cmd.zig");
 const stats = @import("stats.zig");
+const update = @import("update.zig");
 const compat = @import("compat.zig");
+const version = @import("version.zig");
 
-const version_str = "ztk 0.2.2";
+const version_str = version.display;
 
 pub fn run(args: []const []const u8, allocator: std.mem.Allocator) !u8 {
     if (args.len < 2) {
@@ -33,6 +35,7 @@ pub fn run(args: []const []const u8, allocator: std.mem.Allocator) !u8 {
     }
     if (eq(sub, "filter")) return filter_cmd.run(args, allocator);
     if (eq(sub, "stats")) return stats.run(allocator);
+    if (eq(sub, "update")) return update.run(args, allocator);
 
     var buf: [256]u8 = undefined;
     const msg = std.fmt.bufPrint(&buf, "ztk: unknown command: {s}\n", .{sub}) catch "ztk: unknown command\n";
@@ -59,6 +62,7 @@ fn usage() !void {
         \\  init [-g]             install Claude Code PreToolUse hook
         \\  rewrite               PreToolUse hook handler (reads stdin)
         \\  stats                 print savings stats
+        \\  update                update this ztk executable from GitHub
         \\  version               print version
         \\
     );
