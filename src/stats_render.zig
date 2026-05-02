@@ -12,6 +12,8 @@ const D = "\x1b[2m"; // dim
 const R = "\x1b[0m"; // reset
 const BG = "\x1b[48;5;22m"; // dark green bg
 const SPARK = "\x1b[38;5;46m"; // bright green fg
+const BOX_INNER_WIDTH: usize = 46;
+const SPARK_WIDTH: usize = 36;
 
 pub fn renderDashboard(data: *const parse.StatsData, w: anytype) !void {
     try w.writeAll("\n");
@@ -29,31 +31,64 @@ fn renderBox(w: anytype, d: *const parse.StatsData) !void {
     var buf: [512]u8 = undefined;
 
     try w.writeAll(D ++ "  ┌──────────────────────────────────────────────┐\n" ++ R);
-    try w.writeAll(D ++ "  │" ++ R ++ G ++ "  ⚡ ztk Token Savings                        " ++ R ++ D ++ "│\n" ++ R);
+    try writeBoxStart(w);
+    try w.writeAll(G ++ "  ⚡ ztk Token Savings" ++ R);
+    try writeBoxEnd(w, 2 + 1 + 1 + "ztk Token Savings".len);
     try w.writeAll(D ++ "  ├──────────────────────────────────────────────┤\n" ++ R);
 
-    const s1 = try std.fmt.bufPrint(&buf, D ++ "  │" ++ R ++ "  Commands:  " ++ W ++ "{d: <6}" ++ R ++
-        "  Input: " ++ W ++ "{s: <8}" ++ R ++
-        "  Output: " ++ W ++ "{s}" ++ R ++ "\n", .{ d.total_commands, fmtSz(&b1, d.total_raw), fmtSz(&b2, d.total_filtered) });
-    try w.writeAll(s1);
+    const commands = try std.fmt.bufPrint(&buf, "{d}", .{d.total_commands});
+    const input = fmtSz(&b1, d.total_raw);
+    const output = fmtSz(&b2, d.total_filtered);
+    try writeBoxStart(w);
+    try w.writeAll("  Commands: ");
+    try w.writeAll(W);
+    try w.writeAll(commands);
+    try w.writeAll(R ++ "  Input: " ++ W);
+    try w.writeAll(input);
+    try w.writeAll(R ++ "  Output: " ++ W);
+    try w.writeAll(output);
+    try w.writeAll(R);
+    try writeBoxEnd(w, 2 + "Commands: ".len + commands.len + 2 + "Input: ".len + input.len + 2 + "Output: ".len + output.len);
 
-    const s2 = try std.fmt.bufPrint(&buf, D ++ "  │" ++ R ++ "  Saved:     " ++ G ++ "{s: <6}" ++ R ++
-        "  " ++ G ++ "({d}.{d}% reduction)" ++ R ++ "\n", .{ fmtSz(&b3, saved), pct / 10, pct % 10 });
-    try w.writeAll(s2);
+    const saved_str = fmtSz(&b3, saved);
+    const pct_str = try std.fmt.bufPrint(&buf, "{d}.{d}%", .{ pct / 10, pct % 10 });
+    try writeBoxStart(w);
+    try w.writeAll("  Saved: ");
+    try w.writeAll(G);
+    try w.writeAll(saved_str);
+    try w.writeAll(R ++ "  " ++ G ++ "(");
+    try w.writeAll(pct_str);
+    try w.writeAll(" reduction)" ++ R);
+    try writeBoxEnd(w, 2 + "Saved: ".len + saved_str.len + 2 + 1 + pct_str.len + " reduction)".len);
 
     // Sparkline meter
-    try w.writeAll(D ++ "  │" ++ R ++ "  ");
-    const filled: usize = @intCast(@min(40, (pct * 40) / 1000));
+    try writeBoxStart(w);
+    try w.writeAll("  ");
+    const filled: usize = @intCast(@min(@as(u64, SPARK_WIDTH), (pct * @as(u64, SPARK_WIDTH)) / 1000));
     try w.writeAll(SPARK);
     var i: usize = 0;
     while (i < filled) : (i += 1) try w.writeAll("▓");
     try w.writeAll(D);
-    while (i < 40) : (i += 1) try w.writeAll("░");
+    while (i < SPARK_WIDTH) : (i += 1) try w.writeAll("░");
     try w.writeAll(R);
-    const s3 = try std.fmt.bufPrint(&buf, " " ++ G ++ "{d}.{d}%\n" ++ R, .{ pct / 10, pct % 10 });
-    try w.writeAll(s3);
+    try w.writeAll(" " ++ G);
+    try w.writeAll(pct_str);
+    try w.writeAll(R);
+    try writeBoxEnd(w, 2 + SPARK_WIDTH + 1 + pct_str.len);
 
     try w.writeAll(D ++ "  └──────────────────────────────────────────────┘\n" ++ R);
+}
+
+fn writeBoxStart(w: anytype) !void {
+    try w.writeAll(D ++ "  │" ++ R);
+}
+
+fn writeBoxEnd(w: anytype, visible_width: usize) !void {
+    var i = visible_width;
+    while (i < BOX_INNER_WIDTH) : (i += 1) {
+        try w.writeAll(" ");
+    }
+    try w.writeAll(D ++ "│\n" ++ R);
 }
 
 fn renderTable(w: anytype, d: *const parse.StatsData) !void {
@@ -108,4 +143,57 @@ fn fmtSz(buf: *[32]u8, bytes: u64) []const u8 {
     }
     const m = bytes * 10 / (1024 * 1024);
     return std.fmt.bufPrint(buf, "{d}.{d}M", .{ m / 10, m % 10 }) catch "?";
+}
+
+test "dashboard keeps savings meter inside summary box" {
+    const ansi = @import("simd/ansi.zig");
+    const TestWriter = struct {
+        list: *std.ArrayList(u8),
+        allocator: std.mem.Allocator,
+
+        pub fn writeAll(self: @This(), bytes: []const u8) !void {
+            try self.list.appendSlice(self.allocator, bytes);
+        }
+    };
+    const Utf8 = struct {
+        fn countCodepoints(bytes: []const u8) usize {
+            var count: usize = 0;
+            for (bytes) |byte| {
+                if ((byte & 0b1100_0000) != 0b1000_0000) count += 1;
+            }
+            return count;
+        }
+    };
+
+    const entries = [_]parse.CmdEntry{};
+    const data: parse.StatsData = .{
+        .total_commands = 3,
+        .total_raw = 112_900,
+        .total_filtered = 20_100,
+        .entries = &entries,
+    };
+
+    var rendered: std.ArrayList(u8) = .empty;
+    defer rendered.deinit(std.testing.allocator);
+    const writer: TestWriter = .{ .list = &rendered, .allocator = std.testing.allocator };
+
+    try renderDashboard(&data, writer);
+
+    const plain = try ansi.stripAnsi(rendered.items, std.testing.allocator);
+    defer std.testing.allocator.free(plain);
+
+    var saw_meter = false;
+    var lines = std.mem.splitScalar(u8, plain, '\n');
+    while (lines.next()) |line| {
+        if (!std.mem.startsWith(u8, line, "  │")) continue;
+
+        try std.testing.expect(std.mem.endsWith(u8, line, "│"));
+        const right_border = std.mem.lastIndexOf(u8, line, "│").?;
+        try std.testing.expectEqual(@as(usize, 2 + 1 + BOX_INNER_WIDTH), Utf8.countCodepoints(line[0..right_border]));
+        if (std.mem.indexOf(u8, line, "▓") != null) {
+            saw_meter = true;
+            try std.testing.expect(std.mem.indexOf(u8, line, "82.1%") != null);
+        }
+    }
+    try std.testing.expect(saw_meter);
 }
