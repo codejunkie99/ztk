@@ -25,7 +25,7 @@ pub fn run(args: []const []const u8, allocator: std.mem.Allocator) !u8 {
         return 0;
     }
     if (eq(sub, "init")) return runInitCmd(args, allocator);
-    if (eq(sub, "rewrite")) return claude.runRewrite(allocator);
+    if (eq(sub, "rewrite")) return claude.runRewrite(args, allocator);
     if (eq(sub, "run")) {
         if (args.len < 3) {
             try compat.writeStderr("usage: ztk run <cmd> [args...]\n");
@@ -46,10 +46,15 @@ pub fn run(args: []const []const u8, allocator: std.mem.Allocator) !u8 {
 
 fn runInitCmd(args: []const []const u8, allocator: std.mem.Allocator) !u8 {
     var global = false;
+    var skip_permissions = false;
     for (args[2..]) |a| {
         if (eq(a, "-g") or eq(a, "--global")) global = true;
+        if (eq(a, "--skip-permissions")) skip_permissions = true;
     }
-    try claude.runInit(allocator, global);
+    claude.runInit(allocator, global, skip_permissions) catch |err| switch (err) {
+        error.HookFlagMismatch => return 1,
+        else => return err,
+    };
     return 0;
 }
 
@@ -59,8 +64,19 @@ fn usage() !void {
         \\
         \\commands:
         \\  run <cmd> [args...]   execute command and emit compact output
-        \\  init [-g]             install Claude Code PreToolUse hook
-        \\  rewrite               PreToolUse hook handler (reads stdin)
+        \\  init [-g] [--skip-permissions]
+        \\                        install Claude Code PreToolUse hook.
+        \\                        -g writes to $HOME/.claude/settings.json,
+        \\                        otherwise ./.claude/settings.json.
+        \\                        --skip-permissions writes the hook command
+        \\                        as `ztk rewrite --skip-permissions` so the
+        \\                        hook emits "allow" instead of "ask".
+        \\  rewrite [--skip-permissions]
+        \\                        PreToolUse hook handler (reads stdin).
+        \\                        --skip-permissions emits "allow" instead of
+        \\                        "ask" so auto-mode users aren't prompted on
+        \\                        every rewrite. permissions.deny / .ask rules
+        \\                        still apply to the rewritten command.
         \\  stats                 print savings stats
         \\  update                update this ztk executable from GitHub
         \\  version               print version

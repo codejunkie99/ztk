@@ -19,7 +19,7 @@ test "runInit writes a fresh settings file into tmpdir" {
     const settings = try std.fs.path.join(allocator, &.{ base, "settings.json" });
     defer allocator.free(settings);
 
-    const status = try claude_init.writeInit(allocator, settings);
+    const status = try claude_init.writeInit(allocator, settings, false);
     try std.testing.expectEqual(claude_init.InstallStatus.installed, status);
 
     const file = try compat.openFile(settings, .{});
@@ -46,8 +46,8 @@ test "runInit is idempotent when hook is already present" {
     const settings = try std.fs.path.join(allocator, &.{ base, "settings.json" });
     defer allocator.free(settings);
 
-    _ = try claude_init.writeInit(allocator, settings);
-    const status2 = try claude_init.writeInit(allocator, settings);
+    _ = try claude_init.writeInit(allocator, settings, false);
+    const status2 = try claude_init.writeInit(allocator, settings, false);
     try std.testing.expectEqual(claude_init.InstallStatus.already_installed, status2);
 }
 
@@ -66,7 +66,7 @@ test "runInit preserves unrelated top-level keys when merging" {
         defer compat.closeFile(f);
         try compat.writeFileAll(f, "{\"theme\":\"dark\"}");
     }
-    _ = try claude_init.writeInit(allocator, settings);
+    _ = try claude_init.writeInit(allocator, settings, false);
 
     const f = try compat.openFile(settings, .{});
     defer compat.closeFile(f);
@@ -74,6 +74,56 @@ test "runInit preserves unrelated top-level keys when merging" {
     defer allocator.free(bytes);
     try std.testing.expect(std.mem.indexOf(u8, bytes, "\"theme\"") != null);
     try std.testing.expect(std.mem.indexOf(u8, bytes, "ztk rewrite") != null);
+}
+
+test "runInit with skip_permissions writes flagged hook command" {
+    const allocator = std.testing.allocator;
+    var tmp = std.testing.tmpDir(.{});
+    defer tmp.cleanup();
+
+    const base = try tmpRealPath(allocator, &tmp);
+    defer allocator.free(base);
+    const settings = try std.fs.path.join(allocator, &.{ base, "settings.json" });
+    defer allocator.free(settings);
+
+    const status = try claude_init.writeInit(allocator, settings, true);
+    try std.testing.expectEqual(claude_init.InstallStatus.installed, status);
+
+    const f = try compat.openFile(settings, .{});
+    defer compat.closeFile(f);
+    const bytes = try compat.readFileToEndAlloc(f, allocator, 1 << 20);
+    defer allocator.free(bytes);
+    try std.testing.expect(std.mem.indexOf(u8, bytes, "\"ztk rewrite --skip-permissions\"") != null);
+}
+
+test "runInit reports conflict when existing hook uses different flag" {
+    const allocator = std.testing.allocator;
+    var tmp = std.testing.tmpDir(.{});
+    defer tmp.cleanup();
+
+    const base = try tmpRealPath(allocator, &tmp);
+    defer allocator.free(base);
+    const settings = try std.fs.path.join(allocator, &.{ base, "settings.json" });
+    defer allocator.free(settings);
+
+    _ = try claude_init.writeInit(allocator, settings, false);
+    const status2 = try claude_init.writeInit(allocator, settings, true);
+    try std.testing.expectEqual(claude_init.InstallStatus.conflict, status2);
+}
+
+test "runInit idempotent on flagged re-install" {
+    const allocator = std.testing.allocator;
+    var tmp = std.testing.tmpDir(.{});
+    defer tmp.cleanup();
+
+    const base = try tmpRealPath(allocator, &tmp);
+    defer allocator.free(base);
+    const settings = try std.fs.path.join(allocator, &.{ base, "settings.json" });
+    defer allocator.free(settings);
+
+    _ = try claude_init.writeInit(allocator, settings, true);
+    const status2 = try claude_init.writeInit(allocator, settings, true);
+    try std.testing.expectEqual(claude_init.InstallStatus.already_installed, status2);
 }
 
 test "sample Claude hook JSON yields expected command" {

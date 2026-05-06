@@ -24,7 +24,22 @@ const compat = @import("../compat.zig");
 ///    "updatedInput": {"command": "ztk run <original>"}}}
 ///
 /// No output (empty stdout) means "no opinion, let Claude Code decide".
-pub fn runRewrite(allocator: std.mem.Allocator) !u8 {
+///
+/// Flags (parsed from args[2..]):
+///   --skip-permissions   emit "allow" instead of the default "ask".
+///       Hook-emitted "ask" cannot be overridden by user permissions.allow
+///       rules, so the default forces a prompt for every rewrite. With this
+///       flag the rewrite is approved by the hook; user permissions.deny
+///       and permissions.ask rules still fire on the rewritten command
+///       (Claude Code always evaluates those regardless of hook decision).
+pub fn runRewrite(args: []const []const u8, allocator: std.mem.Allocator) !u8 {
+    var skip_permissions = false;
+    if (args.len > 2) {
+        for (args[2..]) |a| {
+            if (std.mem.eql(u8, a, "--skip-permissions")) skip_permissions = true;
+        }
+    }
+
     const stdin_bytes = readStdin(allocator) catch return 0;
     defer allocator.free(stdin_bytes);
 
@@ -47,7 +62,7 @@ pub fn runRewrite(allocator: std.mem.Allocator) !u8 {
     }
 
     debugLog("rewrite", command) catch {};
-    try emitRewrite(allocator, command);
+    try emitRewrite(allocator, command, skip_permissions);
     return 0;
 }
 
@@ -103,20 +118,32 @@ pub fn hasFilterFor(command: []const u8) bool {
     return false;
 }
 
-fn emitRewrite(allocator: std.mem.Allocator, command: []const u8) !void {
-    // Claude Code PreToolUse hook JSON format.
-    // permissionDecision="ask" + updatedInput triggers the rewrite flow.
+fn emitRewrite(allocator: std.mem.Allocator, command: []const u8, skip_permissions: bool) !void {
+    const payload = try buildRewritePayload(allocator, command, skip_permissions);
+    defer allocator.free(payload);
+    try compat.writeStdout(payload);
+}
+
+/// Build the PreToolUse hook JSON payload that rewrites `command` to
+/// `ztk run <command>`. Decision is "allow" when `skip_permissions` is
+/// true (auto-mode friendly), otherwise "ask" (forces a confirmation
+/// prompt for every rewrite). Both forms still let Claude Code evaluate
+/// permissions.deny and permissions.ask rules on the rewritten command.
+pub fn buildRewritePayload(
+    allocator: std.mem.Allocator,
+    command: []const u8,
+    skip_permissions: bool,
+) ![]u8 {
+    const decision: []const u8 = if (skip_permissions) "allow" else "ask";
     const rewritten = try std.fmt.allocPrint(allocator, "ztk run {s}", .{command});
     defer allocator.free(rewritten);
     const escaped = try jsonEscape(allocator, rewritten);
     defer allocator.free(escaped);
-    var buf: [8192]u8 = undefined;
-    const payload = try std.fmt.bufPrint(
-        &buf,
-        "{{\"hookSpecificOutput\":{{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"ask\",\"permissionDecisionReason\":\"ztk auto-rewrite for token savings\",\"updatedInput\":{{\"command\":\"{s}\"}}}}}}\n",
-        .{escaped},
+    return std.fmt.allocPrint(
+        allocator,
+        "{{\"hookSpecificOutput\":{{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"{s}\",\"permissionDecisionReason\":\"ztk auto-rewrite for token savings\",\"updatedInput\":{{\"command\":\"{s}\"}}}}}}\n",
+        .{ decision, escaped },
     );
-    try compat.writeStdout(payload);
 }
 
 fn jsonEscape(allocator: std.mem.Allocator, input: []const u8) ![]u8 {
@@ -166,4 +193,29 @@ test "jsonEscape handles quotes and backslashes" {
     const out = try jsonEscape(allocator, "cmd \"arg\"\n\\");
     defer allocator.free(out);
     try std.testing.expectEqualStrings("cmd \\\"arg\\\"\\n\\\\", out);
+}
+
+test "buildRewritePayload defaults to ask" {
+    const allocator = std.testing.allocator;
+    const out = try buildRewritePayload(allocator, "git status", false);
+    defer allocator.free(out);
+    try std.testing.expect(std.mem.indexOf(u8, out, "\"permissionDecision\":\"ask\"") != null);
+    try std.testing.expect(std.mem.indexOf(u8, out, "\"permissionDecision\":\"allow\"") == null);
+    try std.testing.expect(std.mem.indexOf(u8, out, "\"command\":\"ztk run git status\"") != null);
+}
+
+test "buildRewritePayload with skip_permissions emits allow" {
+    const allocator = std.testing.allocator;
+    const out = try buildRewritePayload(allocator, "git status", true);
+    defer allocator.free(out);
+    try std.testing.expect(std.mem.indexOf(u8, out, "\"permissionDecision\":\"allow\"") != null);
+    try std.testing.expect(std.mem.indexOf(u8, out, "\"permissionDecision\":\"ask\"") == null);
+    try std.testing.expect(std.mem.indexOf(u8, out, "\"command\":\"ztk run git status\"") != null);
+}
+
+test "buildRewritePayload escapes embedded quotes in command" {
+    const allocator = std.testing.allocator;
+    const out = try buildRewritePayload(allocator, "git commit -m \"x\"", true);
+    defer allocator.free(out);
+    try std.testing.expect(std.mem.indexOf(u8, out, "ztk run git commit -m \\\"x\\\"") != null);
 }
