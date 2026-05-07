@@ -8,9 +8,9 @@
 
 ---
 
-Every time your AI coding assistant runs `git diff`, `ls`, or `cargo test`, it dumps thousands of raw tokens into the context window. Most of that is noise. Metadata, whitespace, passing tests, file permissions nobody asked for.
+Every time Claude Code runs `git diff`, `ls`, or `cargo test`, it dumps thousands of raw tokens into the context window. Most of that is noise. Metadata, whitespace, passing tests, file permissions nobody asked for.
 
-**ztk sits between your AI tool and the shell.** It intercepts command output and compresses it before it reaches the LLM. Same information. Fraction of the tokens.
+**ztk sits between Claude Code and the shell.** Today, automatic interception is built around Claude Code's `PreToolUse` hook model. You can still run any command manually through `ztk run`, but other AI tools need their own hook adapter before ztk can intercept them automatically.
 
 <p align="center">
   <img src="assets/stats-screenshot.svg" alt="ztk stats, 256 commands, 5.8M saved, 90.6% reduction" width="700">
@@ -50,14 +50,17 @@ The binary is **260KB**. No dependencies. No runtime. Just a single executable.
 ## Quick Start
 
 ```bash
-# One command to set up
+# One command to set up Claude Code
 ztk init -g
 
-# That's it. Every shell command your AI runs now goes through ztk.
+# That's it. Every shell command Claude Code runs now goes through ztk.
 # Try it manually:
 ztk run git diff HEAD~5
 ztk run ls -la src/
 ztk run cargo test
+
+# If Claude Code auto-mode should not prompt on every rewrite:
+ztk init -g --skip-permissions
 
 # See your savings:
 ztk stats
@@ -134,11 +137,11 @@ Mutation commands like `git add` automatically invalidate related caches.
 
 **231 tests.** Every filter, every edge case, every state machine. The regex engine alone has 11 tests covering catastrophic backtracking prevention.
 
-## For AI Tool Developers
+## Integration Status
 
-ztk integrates with Claude Code via PreToolUse hooks. The `ztk init -g` command wires everything up automatically.
+ztk integrates with Claude Code via `PreToolUse` hooks. The `ztk init -g` command wires that hook into Claude Code automatically.
 
-Adding support for other tools (Cursor, Gemini CLI, Copilot) is straightforward. Each needs a hook adapter in `src/hooks/`. The compression pipeline is tool-agnostic.
+It is not a generic LLM hook layer yet. The compression pipeline is tool-agnostic, and `ztk run <command>` works as a standalone wrapper, but automatic interception for tools such as Codex, Cursor, Gemini CLI, or Copilot requires a dedicated adapter in `src/hooks/`.
 
 ## Development
 
