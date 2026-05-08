@@ -103,5 +103,14 @@ test {
     _ = @import("hooks/claude_init_build.zig");
     _ = @import("hooks/claude_rewrite.zig");
     _ = @import("hooks/claude_test.zig");
+    _ = @import("hooks/cursor.zig");
+    _ = @import("hooks/cursor_init.zig");
+    _ = @import("hooks/cursor_rewrite.zig");
+    _ = @import("hooks/cursor_test.zig");
+    _ = @import("hooks/gemini.zig");
+    _ = @import("hooks/gemini_init.zig");
+    _ = @import("hooks/gemini_init_build.zig");
+    _ = @import("hooks/gemini_rewrite.zig");
+    _ = @import("hooks/gemini_test.zig");
     _ = @import("update.zig");
 }
