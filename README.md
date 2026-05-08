@@ -8,9 +8,9 @@
 
 ---
 
-Every time Claude Code runs `git diff`, `ls`, or `cargo test`, it dumps thousands of raw tokens into the context window. Most of that is noise. Metadata, whitespace, passing tests, file permissions nobody asked for.
+Every time an AI coding agent runs `git diff`, `ls`, or `cargo test`, it dumps thousands of raw tokens into the context window. Most of that is noise. Metadata, whitespace, passing tests, file permissions nobody asked for.
 
-**ztk sits between Claude Code and the shell.** Today, automatic interception is built around Claude Code's `PreToolUse` hook model. You can still run any command manually through `ztk run`, but other AI tools need their own hook adapter before ztk can intercept them automatically.
+**ztk sits between your AI agent and the shell.** It supports automatic interception for **Claude Code**, **Cursor Agent**, and **Gemini CLI** — each through their native hook mechanisms. You can also run any command manually through `ztk run`.
 
 <p align="center">
   <img src="assets/stats-screenshot.svg" alt="ztk stats, 256 commands, 5.8M saved, 90.6% reduction" width="700">
@@ -50,10 +50,12 @@ The binary is **260KB**. No dependencies. No runtime. Just a single executable.
 ## Quick Start
 
 ```bash
-# One command to set up Claude Code
+# Set up all detected agents (Claude Code, Cursor, Gemini CLI)
 ztk init -g
 
-# That's it. Every shell command Claude Code runs now goes through ztk.
+# ztk detects which agent config directories exist (.claude/, .cursor/,
+# .gemini/) and installs hooks only for those agents.
+
 # Try it manually:
 ztk run git diff HEAD~5
 ztk run ls -la src/
@@ -135,13 +137,17 @@ Mutation commands like `git add` automatically invalidate related caches.
 
 **SIMD text processing.** Line splitting and ANSI escape stripping use `@Vector(16, u8)` for hardware-accelerated processing on both ARM NEON and x86 SSE2.
 
-**231 tests.** Every filter, every edge case, every state machine. The regex engine alone has 11 tests covering catastrophic backtracking prevention.
+**269 tests.** Every filter, every edge case, every state machine. The regex engine alone has 11 tests covering catastrophic backtracking prevention.
 
-## Integration Status
+## Supported Agents
 
-ztk integrates with Claude Code via `PreToolUse` hooks. The `ztk init -g` command wires that hook into Claude Code automatically.
+| Agent | Hook mechanism | Init |
+|---|---|---|
+| **Claude Code** | `PreToolUse` hook in `.claude/settings.json` | `ztk init -g` |
+| **Cursor Agent** | `PreToolUse` hook in `.cursor/hooks.json` | `ztk init -g` |
+| **Gemini CLI** | `BeforeTool` hook in `.gemini/settings.json` | `ztk init -g` |
 
-It is not a generic LLM hook layer yet. The compression pipeline is tool-agnostic, and `ztk run <command>` works as a standalone wrapper, but automatic interception for tools such as Codex, Cursor, Gemini CLI, or Copilot requires a dedicated adapter in `src/hooks/`.
+`ztk init` detects which agents are present and installs hooks for all of them. The compression pipeline is agent-agnostic — `ztk run <command>` works as a standalone wrapper regardless of which agent invokes it.
 
 ## Development
 
