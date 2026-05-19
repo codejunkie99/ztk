@@ -32,8 +32,15 @@ pub fn run(args: []const []const u8, allocator: std.mem.Allocator) !u8 {
     if (eq(sub, "gemini-rewrite")) return gemini.runRewrite(allocator);
     if (eq(sub, "run")) {
         if (args.len < 3) {
-            try compat.writeStderr("usage: ztk run <cmd> [args...]\n");
+            try compat.writeStderr("usage: ztk run [--raw] <cmd> [args...]\n");
             return 1;
+        }
+        if (eq(args[2], "--raw")) {
+            if (args.len < 4) {
+                try compat.writeStderr("usage: ztk run --raw <cmd> [args...]\n");
+                return 1;
+            }
+            return proxy.runRaw(args[3..], allocator);
         }
         return proxy.runProxy(args[2..], allocator);
     }
@@ -98,7 +105,9 @@ fn usage() !void {
         \\usage: ztk <command> [args...]
         \\
         \\commands:
-        \\  run <cmd> [args...]   execute command and emit compact output
+        \\  run [--raw] <cmd> [args...]
+        \\                        execute command and emit compact output.
+        \\                        --raw bypasses filtering for exact output.
         \\  init [-g] [--skip-permissions]
         \\                        install hooks for all supported agents
         \\                        (.claude/, .cursor/, .gemini/).
@@ -125,10 +134,15 @@ inline fn eq(a: []const u8, b: []const u8) bool {
 }
 
 test "version constant" {
-    try std.testing.expectEqualStrings("ztk 0.3.0", version_str);
+    try std.testing.expectEqualStrings("ztk 0.3.1", version_str);
 }
 
 test "run with no args returns 1" {
     const code = try run(&.{"ztk"}, std.testing.allocator);
+    try std.testing.expectEqual(@as(u8, 1), code);
+}
+
+test "run raw without command returns usage error" {
+    const code = try run(&.{ "ztk", "run", "--raw" }, std.testing.allocator);
     try std.testing.expectEqual(@as(u8, 1), code);
 }

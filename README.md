@@ -74,6 +74,7 @@ ztk init -g
 ztk run git diff HEAD~5
 ztk run ls -la src/
 ztk run cargo test
+ztk run --raw ls -la src/  # exact output when names/details matter
 
 # If Claude Code auto-mode should not prompt on every rewrite:
 ztk init -g --skip-permissions
@@ -123,10 +124,12 @@ ztk runs the command normally, captures the output, compresses it through a six-
 
 The hook matcher also recognizes path-qualified executables such as `/bin/ls`, `/usr/bin/find`, and `/opt/homebrew/bin/git status`, so agents do not bypass compression by spelling the same tool with an absolute path.
 
+File-listing filters preserve useful payloads. `ls` keeps filenames for bounded listings, and `find` keeps the first set of matching paths before truncating. ztk should remove command-output noise, not hide the names or paths the agent asked for.
+
 **What gets compressed:**
 - Diff metadata and excess context lines → just the changes
 - Test runner noise → just failures and a summary
-- Directory listings → counts and structure, not every permission bit
+- Directory listings → counts and structure plus useful names, not every permission bit
 - Log files → deduplicated with counts
 - Code files → signatures and declarations, not function bodies
 

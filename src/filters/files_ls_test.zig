@@ -44,6 +44,29 @@ test "plain ls output treats lines as names" {
     try std.testing.expect(std.mem.indexOf(u8, r, "0 dirs, 3 files") != null);
 }
 
+test "issue 13 directory listing preserves design doc filenames" {
+    const input =
+        \\2026-04-23-order-credential-ingest-design.md
+        \\2026-04-23-wc-product-mapping-design.md
+        \\2026-04-30-license-expired-state-design.md
+        \\2026-04-30-old-credentials-csv-import-design.md
+        \\2026-05-05-order-import-normalization-design.md
+        \\2026-05-08-credential-match-redirect-design.md
+        \\2026-05-10-customer-second-email-design.md
+        \\2026-05-11-credential-assignment-review-design.md
+        \\2026-05-12-credential-match-alternates-design.md
+        \\2026-05-12-old-credentials-import-unlinked-design.md
+        \\2026-05-13-customer-match-email-handling-design.md
+        \\2026-05-13-pending-filter-checkbox-design.md
+        \\2026-05-14-credential-assignment-auto-preselect-design.md
+    ;
+    const r = try filterLs(input, std.testing.allocator);
+    defer std.testing.allocator.free(r);
+    try std.testing.expect(std.mem.indexOf(u8, r, "13 files") != null);
+    try std.testing.expect(std.mem.indexOf(u8, r, "2026-04-23-order-credential-ingest-design.md") != null);
+    try std.testing.expect(std.mem.indexOf(u8, r, "2026-05-14-credential-assignment-auto-preselect-design.md") != null);
+}
+
 test "empty input" {
     const r = try filterLs("", std.testing.allocator);
     defer std.testing.allocator.free(r);

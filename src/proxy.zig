@@ -10,20 +10,12 @@ const compat = @import("compat.zig");
 
 pub fn runProxy(cmd_args: []const []const u8, allocator: std.mem.Allocator) !u8 {
     const cmd_str = try std.mem.join(allocator, " ", cmd_args);
+    defer allocator.free(cmd_str);
     if (!builtin.is_test) {
-        const verdict = permissions.checkCommand(cmd_str, &.{}, allocator) catch .allow;
-        switch (verdict) {
-            .deny => {
-                compat.writeStderr("ztk: command denied by permission rules\n") catch {};
-                return 2;
-            },
-            .ask => {
-                compat.writeStderr("ztk: command requires user confirmation\n") catch {};
-                return 3;
-            },
-            .allow, .passthrough => {},
-        }
+        if (try enforcePermissions(cmd_str, allocator)) |code| return code;
     }
+    if (rawEnvEnabled(allocator)) return runCommandRaw(cmd_args, allocator);
+
     const result = try executor.exec(cmd_args, allocator, .filter_stdout_only);
     const filtered = applyFilters(cmd_str, result.stdout, allocator);
     const final_bytes = maybeApplySession(cmd_str, filtered, allocator);
@@ -42,6 +34,46 @@ pub fn runProxy(cmd_args: []const []const u8, allocator: std.mem.Allocator) !u8 
         ) catch {};
     }
     return result.exit_code;
+}
+
+pub fn runRaw(cmd_args: []const []const u8, allocator: std.mem.Allocator) !u8 {
+    const cmd_str = try std.mem.join(allocator, " ", cmd_args);
+    defer allocator.free(cmd_str);
+    if (!builtin.is_test) {
+        if (try enforcePermissions(cmd_str, allocator)) |code| return code;
+    }
+    return runCommandRaw(cmd_args, allocator);
+}
+
+fn enforcePermissions(cmd_str: []const u8, allocator: std.mem.Allocator) !?u8 {
+    const verdict = permissions.checkCommand(cmd_str, &.{}, allocator) catch .allow;
+    switch (verdict) {
+        .deny => {
+            compat.writeStderr("ztk: command denied by permission rules\n") catch {};
+            return 2;
+        },
+        .ask => {
+            compat.writeStderr("ztk: command requires user confirmation\n") catch {};
+            return 3;
+        },
+        .allow, .passthrough => {},
+    }
+    return null;
+}
+
+fn runCommandRaw(cmd_args: []const []const u8, allocator: std.mem.Allocator) !u8 {
+    const result = try executor.exec(cmd_args, allocator, .filter_stdout_only);
+    if (result.stdout.len > 0) try compat.writeStdout(result.stdout);
+    if (result.stderr.len > 0) try compat.writeStderr(result.stderr);
+    return result.exit_code;
+}
+
+fn rawEnvEnabled(allocator: std.mem.Allocator) bool {
+    const value = compat.getEnvOwned(allocator, "ZTK_RAW") catch return false;
+    defer allocator.free(value);
+    return std.mem.eql(u8, value, "1") or
+        std.ascii.eqlIgnoreCase(value, "true") or
+        std.ascii.eqlIgnoreCase(value, "yes");
 }
 
 fn resolveLogPath(allocator: std.mem.Allocator) !?[]u8 {

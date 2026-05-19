@@ -2,6 +2,8 @@ const std = @import("std");
 const compat = @import("../compat.zig");
 const ext_mod = @import("files_ls_ext.zig");
 
+const max_names = 40;
+
 /// Smart-mode formatter: emits "N dirs, M files (X .zig, Y other) [d1/, d2/]"
 /// Used when the listing has more than 10 files so the LLM doesn't need to see
 /// every name. Top 3 extensions by count, top 3 dirs in listing order.
@@ -36,6 +38,7 @@ pub fn formatSmart(
         d_emitted += 1;
     }
     try w.writeByte(']');
+    try writeNames(w, dirs, files);
     return out.toOwnedSlice(allocator);
 }
 
@@ -62,6 +65,33 @@ pub fn formatVerbose(
     }
     try w.writeByte(']');
     return out.toOwnedSlice(allocator);
+}
+
+fn writeNames(w: anytype, dirs: []const []const u8, files: []const []const u8) !void {
+    const total = dirs.len + files.len;
+    if (total == 0) return;
+
+    try w.writeAll(" names=[");
+    var emitted: usize = 0;
+    for (dirs) |d| {
+        if (emitted >= max_names) break;
+        if (emitted > 0) try w.writeAll(", ");
+        try w.print("{s}/", .{d});
+        emitted += 1;
+    }
+    if (emitted < max_names) {
+        for (files) |f| {
+            if (emitted >= max_names) break;
+            if (emitted > 0) try w.writeAll(", ");
+            try w.writeAll(f);
+            emitted += 1;
+        }
+    }
+    if (total > emitted) {
+        if (emitted > 0) try w.writeAll(", ");
+        try w.print("... {d} more", .{total - emitted});
+    }
+    try w.writeByte(']');
 }
 
 fn countOther(counts: *const ext_mod.ExtCounts, top: [3]?ext_mod.ExtCounts.Entry) usize {
