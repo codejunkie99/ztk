@@ -1,30 +1,30 @@
 class Ztk < Formula
   desc "CLI proxy that reduces LLM token consumption by 78%+. Zero dependencies."
   homepage "https://github.com/codejunkie99/ztk"
-  version "0.3.0"
+  version "0.3.1"
   license "MIT"
 
   on_macos do
     on_arm do
-      url "https://github.com/codejunkie99/ztk/releases/download/v0.3.0/ztk-aarch64-macos.tar.gz"
-      sha256 "8844864ae3e2d0b60d162bece07101121c749278f811c743abb1adbd910168c3"
+      url "https://github.com/codejunkie99/ztk/releases/download/v0.3.1/ztk-aarch64-macos.tar.gz"
+      sha256 "9e3fefad4926ed4a3fb3a21a10c9032946ee560843c2ee264705584756c114fd"
     end
 
     on_intel do
-      url "https://github.com/codejunkie99/ztk/releases/download/v0.3.0/ztk-x86_64-macos.tar.gz"
-      sha256 "fa81ab536a18d34dd4fe88fd415f2905e5689f2c8767927e76d4db114b14851d"
+      url "https://github.com/codejunkie99/ztk/releases/download/v0.3.1/ztk-x86_64-macos.tar.gz"
+      sha256 "a510956d380c4bece7da556ac061dc7763cd1aa8910d1d1dd27c0c37351f9d09"
     end
   end
 
   on_linux do
     on_arm do
-      url "https://github.com/codejunkie99/ztk/releases/download/v0.3.0/ztk-aarch64-linux-musl.tar.gz"
-      sha256 "63fcf250c01c9f1b331d11dcf91ee5a9710d4e323df3dc1d9b61f28f244a4650"
+      url "https://github.com/codejunkie99/ztk/releases/download/v0.3.1/ztk-aarch64-linux-musl.tar.gz"
+      sha256 "cc1bb764b53d1e29cd703e2f61eb71029c88199bf9d922300dd1a3407058dc1b"
     end
 
     on_intel do
-      url "https://github.com/codejunkie99/ztk/releases/download/v0.3.0/ztk-x86_64-linux-musl.tar.gz"
-      sha256 "af724f1fcd05b16a2726e6e9d04a42ecd9e61e8064880ce9b4a8dcffe20fdec4"
+      url "https://github.com/codejunkie99/ztk/releases/download/v0.3.1/ztk-x86_64-linux-musl.tar.gz"
+      sha256 "6c95b299e85d4dbec7fb6f04667aaa54e3733d2ac9af55eafb4c8c125bd32bcb"
     end
   end
 
@@ -33,6 +33,6 @@ class Ztk < Formula
   end
 
   test do
-    assert_match "ztk 0.3.0", shell_output("#{bin}/ztk --version")
+    assert_match "ztk 0.3.1", shell_output("#{bin}/ztk --version")
   end
 end
