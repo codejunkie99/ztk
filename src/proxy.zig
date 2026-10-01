@@ -99,6 +99,16 @@ const ProcessedOutput = struct {
 };
 
 fn processOutput(cmd: []const u8, result: *const executor.ExecResult, allocator: std.mem.Allocator) ProcessedOutput {
+    // A command that FAILED must never be summarized as success. Filters
+    // collapse empty input into "<cmd>: ok" / "<cmd>: no output" sentinels;
+    // for a failed command whose diagnostics went to stderr (cargo build, go
+    // build, ls, git status, ...) that sentinel is a false pass. Pass the
+    // empty stdout through unchanged so the forwarded stderr is the whole
+    // story. Commands that still produce stdout on failure are filtered
+    // normally — their output carries the failure.
+    if (result.exit_code != 0 and result.stdout.len == 0) {
+        return .{ .stdout = result.stdout, .stderr = result.stderr };
+    }
     const filtered = applyFilters(cmd, result.stdout, allocator);
     const final_bytes = maybeApplySession(cmd, filtered, allocator);
     return .{
@@ -175,4 +185,30 @@ test "processOutput keeps stdout filter masking sensitive values on nonzero exit
     try std.testing.expect(std.mem.indexOf(u8, processed.stdout, "<masked>") != null);
     try std.testing.expect(std.mem.indexOf(u8, processed.stdout, "topsecret") == null);
     try std.testing.expectEqualStrings(exec_result.stderr, processed.stderr);
+}
+
+test "failed command with empty stdout is not summarized as ok" {
+    var arena = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena.deinit();
+    const exec_result: executor.ExecResult = .{
+        .stdout = "",
+        .stderr = "error[E0425]: cannot find value `x`\n  --> src/main.rs:1:1\nerror: could not compile `z` (bin \"z\") due to 1 previous error\n",
+        .exit_code = 101,
+    };
+    const processed = processOutput("cargo build", &exec_result, arena.allocator());
+    // No synthesized "cargo build: ok"; stderr carries the failure.
+    try std.testing.expectEqualStrings("", processed.stdout);
+    try std.testing.expectEqualStrings(exec_result.stderr, processed.stderr);
+}
+
+test "successful command with empty stdout keeps ok summary" {
+    var arena = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena.deinit();
+    const exec_result: executor.ExecResult = .{
+        .stdout = "",
+        .stderr = "",
+        .exit_code = 0,
+    };
+    const processed = processOutput("cargo build", &exec_result, arena.allocator());
+    try std.testing.expectEqualStrings("cargo build: ok", processed.stdout);
 }
