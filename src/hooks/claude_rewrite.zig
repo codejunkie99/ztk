@@ -2,6 +2,7 @@ const std = @import("std");
 const builtin = @import("builtin");
 const comptime_filters = @import("../filters/comptime.zig");
 const compat = @import("../compat.zig");
+const permissions_shell = @import("permissions_shell.zig");
 
 /// Claude Code PreToolUse hook entry point.
 ///
@@ -56,7 +57,7 @@ pub fn runRewrite(args: []const []const u8, allocator: std.mem.Allocator) !u8 {
         return 0;
     }
 
-    if (!hasFilterFor(command)) {
+    if (!shouldRewrite(command)) {
         debugLog("passthrough", command) catch {};
         return 0;
     }
@@ -110,6 +111,72 @@ pub fn extractCommand(allocator: std.mem.Allocator, bytes: []const u8) ![]u8 {
 /// whitespace-delimited prefix of `command`.
 pub fn hasFilterFor(command: []const u8) bool {
     return comptime_filters.hasFilterForCommand(command);
+}
+
+/// Verbs that WRITE when they appear as the second token of a `gh <noun>`
+/// invocation. The hook exists to compress read output; wrapping a mutation
+/// routes its result through `ztk run`, which reports the wrapped form
+/// instead of the real output and (before the stderr fix) swallowed gh's
+/// error text entirely. The hook passes these through untouched.
+const gh_mutating_verbs = [_][]const u8{
+    "merge",    "create",  "edit",    "close",
+    "reopen",   "delete",  "remove",  "ready",
+    "lock",     "unlock",  "pin",     "unpin",
+    "transfer", "comment", "approve", "promote",
+    "deploy",   "archive", "restore", "import",
+    "cancel",   "rerun",   "add",     "set",
+};
+
+fn isGhMutation(verb: []const u8) bool {
+    for (gh_mutating_verbs) |v| {
+        if (std.mem.eql(u8, verb, v)) return true;
+    }
+    // Prefixed gh verbs carry the same writes: add-assignee, remove-label,
+    // set-default, and friends.
+    return std.mem.startsWith(u8, verb, "add-") or
+        std.mem.startsWith(u8, verb, "remove-") or
+        std.mem.startsWith(u8, verb, "set-");
+}
+
+/// True when `command` writes through gh. `gh <noun> <verb>` is judged by
+/// its verb; `gh api` only when it overrides the method to a write verb.
+pub fn isMutatingCommand(command: []const u8) bool {
+    var it = std.mem.tokenizeAny(u8, command, " \t");
+    const head = it.next() orelse return false;
+    const head_base = if (std.mem.lastIndexOfScalar(u8, head, '/')) |i|
+        head[i + 1 ..]
+    else
+        head;
+    if (!std.mem.eql(u8, head_base, "gh")) return false;
+    const noun = it.next() orelse return false;
+    if (std.mem.eql(u8, noun, "api")) {
+        while (it.next()) |tok| {
+            if (std.mem.eql(u8, tok, "-X") or std.mem.eql(u8, tok, "--method")) {
+                const method = it.next() orelse return false;
+                return std.mem.eql(u8, method, "POST") or
+                    std.mem.eql(u8, method, "PUT") or
+                    std.mem.eql(u8, method, "PATCH") or
+                    std.mem.eql(u8, method, "DELETE");
+            }
+        }
+        return false;
+    }
+    const verb = it.next() orelse return false;
+    return isGhMutation(verb);
+}
+
+/// The hook's single rewrite gate: compress only read output of commands
+/// ztk knows, and never touch commands whose shell content the harness
+/// shell must judge itself. A command carrying backticks, `$()`, or
+/// newlines inside a quoted argument (an `--body` value, a commit
+/// message) is legitimate for the harness shell; wrapping it into
+/// `ztk run` made the permission layer deny it and the real command
+/// never ran.
+pub fn shouldRewrite(command: []const u8) bool {
+    if (!hasFilterFor(command)) return false;
+    if (isMutatingCommand(command)) return false;
+    if (permissions_shell.isSuspicious(command)) return false;
+    return true;
 }
 
 fn emitRewrite(allocator: std.mem.Allocator, command: []const u8, skip_permissions: bool) !void {
