@@ -33,7 +33,7 @@ pub fn runRewrite(allocator: std.mem.Allocator) !u8 {
         return 0;
     }
 
-    if (!claude_rewrite.hasFilterFor(command)) {
+    if (!claude_rewrite.shouldRewrite(command)) {
         debugLog("passthrough", command) catch {};
         return 0;
     }

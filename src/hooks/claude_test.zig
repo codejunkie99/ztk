@@ -135,3 +135,48 @@ test "sample Claude hook JSON yields expected command" {
     defer allocator.free(cmd);
     try std.testing.expectEqualStrings("ls -la", cmd);
 }
+
+test "shouldRewrite passes mutations through unwrapped" {
+    // The 2026-11-17 merge wave: every `gh pr merge` was rewritten into
+    // `ztk run gh pr merge`, whose wrapper reported itself instead of the
+    // merge result, and whose errors were invisible. Mutations must reach
+    // the harness shell untouched.
+    try std.testing.expect(!claude_rewrite.shouldRewrite(
+        "gh pr merge 572 --repo okyeboah/agent-brain --squash --subject \"x\""));
+    try std.testing.expect(!claude_rewrite.shouldRewrite(
+        "gh issue comment 570 --repo okyeboah/agent-brain --body \"note\""));
+    try std.testing.expect(!claude_rewrite.shouldRewrite(
+        "gh pr create --title t --reviewers peer"));
+    try std.testing.expect(!claude_rewrite.shouldRewrite(
+        "gh api repos/o/r --method POST -f a=b"));
+    // Reads stay compressible, including prefixed gh verbs that exist only
+    // on one side of the mutation line.
+    try std.testing.expect(claude_rewrite.shouldRewrite(
+        "gh pr list --repo okyeboah/agent-brain --limit 5"));
+    try std.testing.expect(claude_rewrite.shouldRewrite(
+        "gh api repos/o/r/pulls/1 --jq .merged"));
+}
+
+test "isMutatingCommand judges the gh verb, not the flags" {
+    try std.testing.expect(claude_rewrite.isMutatingCommand(
+        "gh pr merge 1"));
+    try std.testing.expect(claude_rewrite.isMutatingCommand(
+        "/opt/homebrew/bin/gh issue edit 1 --title t"));
+    try std.testing.expect(claude_rewrite.isMutatingCommand(
+        "gh label add bug"));
+    try std.testing.expect(!claude_rewrite.isMutatingCommand(
+        "gh pr list --limit 5"));
+    try std.testing.expect(!claude_rewrite.isMutatingCommand(
+        "gh pr view 1 --json state"));
+    try std.testing.expect(!claude_rewrite.isMutatingCommand("git push origin main"));
+}
+
+test "shouldRewrite never wraps shell-suspicious content" {
+    // Backticks inside a quoted --body are argument text, not shell syntax
+    // for the harness shell; wrapping made the permission layer deny the
+    // command and the comment never posted.
+    try std.testing.expect(!claude_rewrite.shouldRewrite(
+        "gh issue comment 570 --body \"see `git rev-parse x` docs\""));
+    try std.testing.expect(!claude_rewrite.shouldRewrite(
+        "git commit -m \"multi\nline\""));
+}
